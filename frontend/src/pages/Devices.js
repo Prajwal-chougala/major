@@ -25,12 +25,17 @@ function Devices() {
 
   const toggleDevice = async (id, currentState) => {
     try {
+      // Optimistic UI update
+      setDevices(prevDevices => prevDevices.map(d => 
+        d.deviceId === id 
+          ? { ...d, powerState: currentState === 'ON' ? 'OFF' : 'ON' } 
+          : d
+      ));
+
       if (currentState === "ON") {
         await API.post(`/devices/${id}/turn-off`).catch(e => console.log('API Failed but updating UI locally'));
-        setDevices(devices.map(d => d.deviceId === id ? { ...d, powerState: 'OFF' } : d));
       } else {
         await API.post(`/devices/${id}/turn-on`).catch(e => console.log('API Failed but updating UI locally'));
-        setDevices(devices.map(d => d.deviceId === id ? { ...d, powerState: 'ON' } : d));
       }
     } catch (error) {
       console.error("Error toggling device:", error);

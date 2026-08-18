@@ -58,13 +58,17 @@ function Dashboard() {
 
   const turnOffDevice = async (deviceId, currentStatus) => {
     try {
+      // Optimistic UI update first using functional state
+      setDevices(prevDevices => prevDevices.map(d => 
+        d.deviceId === deviceId 
+          ? { ...d, powerState: currentStatus === 'ON' ? 'OFF' : 'ON' } 
+          : d
+      ));
+
       if (currentStatus === 'ON') {
         await API.post(`/devices/${deviceId}/turn-off`).catch(e => console.log('API Failed but updating UI locally'));
-        setDevices(devices.map(d => d.deviceId === deviceId ? { ...d, powerState: 'OFF' } : d));
       } else {
-        // Toggle on
         await API.post(`/devices/${deviceId}/turn-on`).catch(e => console.log('API Failed but updating UI locally'));
-        setDevices(devices.map(d => d.deviceId === deviceId ? { ...d, powerState: 'ON' } : d));
       }
     } catch (error) {
       console.log(error);
