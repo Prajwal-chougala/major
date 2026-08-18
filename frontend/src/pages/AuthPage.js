@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 
@@ -32,7 +32,7 @@ function AuthPage() {
     try {
       const endpoint = isLogin ? "/auth/login" : "/auth/register";
       const payload = isLogin ? { identifier: email, password } : { name, email, mobile, password };
-      const res = await axios.post(`http://localhost:5000${endpoint}`, payload);
+      const res = await API.post(endpoint, payload);
 
       const { token, user } = res.data;
       localStorage.setItem("token", token);
