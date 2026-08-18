@@ -27,6 +27,7 @@ function AnalyticsPage() {
   const [totalEnergy, setTotalEnergy] = useState(0);
   const [deviceBreakdown, setDeviceBreakdown] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDevice, setSelectedDevice] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -179,7 +180,11 @@ function AnalyticsPage() {
             ) : deviceBreakdown.length > 0 ? deviceBreakdown.map((device, index) => {
               const icon = index % 3 === 0 ? 'mode_fan' : index % 3 === 1 ? 'ev_station' : 'kitchen';
               return (
-                <div key={device.deviceId} className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                <div 
+                  key={device.deviceId} 
+                  className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-[#0EA5E9]/30 transition-all flex flex-col justify-between cursor-pointer"
+                  onClick={() => setSelectedDevice(device)}
+                >
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200/60 text-[#0EA5E9]">
                       <span className="material-symbols-outlined">{icon}</span>
@@ -210,6 +215,83 @@ function AnalyticsPage() {
           
         </div>
       </div>
+
+      {/* Device Details Modal */}
+      {selectedDevice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedDevice(null)}></div>
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md relative z-10 overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#0EA5E9]/10 flex items-center justify-center text-[#0EA5E9]">
+                  <span className="material-symbols-outlined">analytics</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">{selectedDevice.name}</h3>
+                  <p className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                    <span className={`w-2 h-2 rounded-full ${selectedDevice.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    {selectedDevice.status === 'online' ? 'Online' : 'Offline'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedDevice(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">State</div>
+                  <div className={`font-bold ${selectedDevice.powerState === 'ON' ? 'text-green-600' : 'text-slate-500'}`}>
+                    {selectedDevice.powerState === 'ON' ? 'Turned ON' : 'Turned OFF'}
+                  </div>
+                </div>
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Location</div>
+                  <div className="font-bold text-slate-700 capitalize">{selectedDevice.location || 'Unassigned'}</div>
+                </div>
+              </div>
+
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">Live Telemetry</h4>
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-slate-500">Current Power Draw</span>
+                  <span className="font-mono font-bold text-slate-900">{selectedDevice.currentPowerW} <span className="text-xs text-slate-400">W</span></span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-slate-500">Power Limit</span>
+                  <span className="font-mono font-bold text-slate-900">{selectedDevice.powerLimit} <span className="text-xs text-slate-400">W</span></span>
+                </div>
+              </div>
+
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">Energy & Cost (Today)</h4>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-slate-500">Energy Consumed</span>
+                  <span className="font-mono font-bold text-slate-900">{selectedDevice.energyKWh.toFixed(3)} <span className="text-xs text-slate-400">kWh</span></span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-slate-500">Estimated Cost</span>
+                  <span className="font-mono font-bold text-green-600">${selectedDevice.cost.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 mt-2 border-t border-slate-100 border-dashed">
+                  <span className="text-sm font-semibold text-slate-500">Projected Monthly</span>
+                  <span className="font-mono font-bold text-[#35259B]">${(selectedDevice.cost * 30).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 text-center">
+              <p className="text-xs text-slate-400 font-semibold">
+                Last Seen: {selectedDevice.lastSeen ? new Date(selectedDevice.lastSeen).toLocaleString() : 'Never'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
