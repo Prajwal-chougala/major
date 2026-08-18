@@ -165,12 +165,22 @@ function Dashboard() {
                     </span>
                   </div>
                 </div>
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm hover:border-[#0EA5E9]/20 transition-all">
-                  <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-2">
-                    Est. Monthly
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm hover:border-[#0EA5E9]/20 transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-1">
+                      Today's Cost
+                    </div>
+                    <div className="font-title-md text-title-md text-slate-900 font-bold flex items-baseline gap-1">
+                      ${cost?.estimatedCost || '0.00'}
+                    </div>
                   </div>
-                  <div className="font-title-md text-title-md text-[#0EA5E9] font-bold flex items-baseline gap-1">
-                    ${cost?.estimatedCost || '0.00'}
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-1">
+                      Est. Monthly
+                    </div>
+                    <div className="font-title-md text-title-md text-[#0EA5E9] font-bold flex items-baseline gap-1 text-sm">
+                      ${((cost?.estimatedCost || 0) * 30).toFixed(2)}
+                    </div>
                   </div>
                 </div>
               </div>
