@@ -1,0 +1,259 @@
+Created At: 2026-08-16T13:22:37+05:30
+Completed At: 2026-08-16T13:22:38+05:30
+File Path: `file:///d:/wattwise-project/frontend/src/pages/Dashboard.js`
+Total Lines: 251
+Total Bytes: 8689
+Showing lines 1 to 251
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import { useEffect, useState } from 'react';
+2: import { Link } from 'react-router-dom';
+3: 
+4: import API from '../services/api';
+5: 
+6: import SummaryCards from '../components/SummaryCards';
+7: import Alerts from '../components/Alerts';
+8: import CostCard from '../components/CostCard';
+9: import Graph from '../components/Graph';
+10: 
+11: function Dashboard() {
+12: 
+13:     const [insights, setInsights] = useState(null);
+14:     const [alerts, setAlerts] = useState([]);
+15:     const [cost, setCost] = useState(null);
+16:     const [energyData, setEnergyData] = useState([]);
+17:     const [devices, setDevices] = useState([]);
+18: 
+19:     useEffect(() => {
+20: 
+21:         const fetchInsights = async () => {
+22:             try {
+23:                 const response = await API.get('/insights');
+24:                 setInsights(response.data);
+25:             } catch (error) {
+26:                 console.log(error);
+27:             }
+28:         };
+29: 
+30:         const fetchAlerts = async () => {
+31:             try {
+32:                 const response = await API.get('/alerts');
+33:                 setAlerts(response.data.alerts);
+34:             } catch (error) {
+35:                 console.log(error);
+36:             }
+37:         };
+38: 
+39:         const fetchCost = async () => {
+40:             try {
+41:                 const response = await API.get('/cost');
+42:                 setCost(response.data);
+43:             } catch (error) {
+44:                 console.log(error);
+45:             }
+46:         };
+47: 
+48:         const fetchData = async () => {
+49:             try {
+50:                 const response = await API.get('/data');
+51:                 setEnergyData(response.data);
+52:             } catch (error) {
+53:                 console.log(error);
+54:             }
+55:         };
+56: 
+57:         const fetchDevices = async () => {
+58:             try {
+59:                 const response = await API.get('/device');
+60:                 setDevices(response.data);
+61:             } catch (error) {
+62:                 console.log(error);
+63:             }
+64:         };
+65: 
+66:         fetchInsights();
+67:         fetchAlerts();
+68:         fetchCost();
+69:         fetchData();
+70:         fetchDevices();
+71: 
+72:         const interval = setInterval(() => {
+73:             fetchInsights();
+74:             fetchAlerts();
+75:             fetchCost();
+76:             fetchData();
+77:             fetchDevices();
+78:         }, 5000);
+79: 
+80:         return () => clearInterval(interval);
+81: 
+82:     }, []);
+83: 
+84:     const turnOffDevice = async (deviceId) => {
+85:         try {
+86:             await API.post(`/device/${deviceId}/turn-off`);
+87:             setDevices(devices.map(d => d._id === deviceId ? { ...d, status: 'OFF' } : d));
+88:         } catch (error) {
+89:             console.log(error);
+90:         }
+91:     };
+92: 
+93:     if (!insights) {
+94:         return (
+95:             <div className="text-white p-10">
+96:                 Loading Dashboard...
+97:             </div>
+98:         );
+99:     }
+100: 
+101:     // Group energy readings by device so each device gets its own graph.
+102:     const readingsByDevice = {};
+103:     energyData.forEach((item) => {
+104:         const key = item.device ? item.device._id : 'unknown';
+105:         if (!readingsByDevice[key]) readingsByDevice[key] = [];
+106:         readingsByDevice[key].push(item);
+107:     });
+108: 
+109:     return (
+110: 
+111:         <div className="flex min-h-screen bg-dark text-white">
+112: 
+113:             {/* SIDEBAR */}
+114: 
+115:             <div className="w-64 bg-black border-r border-border p-6">
+116: 
+117:                 <h1 className="text-2xl font-bold text-primary">
+118:                     EnergyAI
+119:                 </h1>
+120: 
+121:                 <div className="mt-10 space-y-4">
+122: 
+123:                     <div className="bg-primary/20 p-3 rounded-xl">
+124:                         Dashboard
+125:                     </div>
+126: 
+127:                     <Link to="/devices" className="block text-gray-400 hover:text-white">
+128:                         Devices
+129:                     </Link>
+130: 
+131:                 </div>
+132: 
+133:             </div>
+134: 
+135:             {/* MAIN CONTENT */}
+136: 
+137:             <div className="flex-1 p-8">
+138: 
+139:                 {/* HEADER */}
+140: 
+141:                 <div className="flex justify-between items-center mb-10">
+142: 
+143:                     <div>
+144: 
+145:                         <h1 className="text-4xl font-bold">
+146:                             Smart Energy Dashboard
+147:                         </h1>
+148: 
+149:                         <p className="text-gray-400 mt-2">
+150:                             AI-powered energy monitoring platform
+151:                         </p>
+152: 
+153:                     </div>
+154: 
+155:                     <div className="bg-green-500/20 text-green-400 px-4 py-2 rounded-xl">
+156:                         ● System Active
+157:                     </div>
+158: 
+159:                 </div>
+160: 
+161:                 {/* SUMMARY CARDS */}
+162: 
+163:                 <SummaryCards insights={insights} />
+164: 
+165:                 {/* GRID SECTION */}
+166: 
+167:                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+168: 
+169:                     <div className="lg:col-span-2 space-y-6">
+170:                         {devices.length === 0 && (
+171:                             <div className="bg-card border border-border rounded-2xl p-8 text-gray-400">
+172:                                 No devices yet.{' '}
+173:                                 <Link to="/devices" className="text-primary hover:underline">
+174:                                     Add your first device
+175:                                 </Link>{' '}
+176:                                 to start seeing live graphs here.
+177:                             </div>
+178:                         )}
+179: 
+180:                         {devices.map((device) => {
+181:                             const deviceReadings = readingsByDevice[device._id] || [];
+182:                             const latestPower = deviceReadings.length > 0
+183:                                 ? deviceReadings[deviceReadings.length - 1].power
+184:                                 : null;
+185:                             const overLimit = latestPower !== null && latestPower > device.powerLimit;
+186: 
+187:                             return (
+188:                                 <div key={device._id}>
+189:                                     <div className="flex justify-between items-center mb-2 px-1">
+190:                                         <div className="flex items-center gap-3">
+191:                                             <span className="font-semibold">{device.name}</span>
+192:                                             <span className={`
+193:                                                 px-3 py-1 rounded-full text-xs font-semibold
+194:                                                 ${device.status === 'ON'
+195:                                                     ? 'bg-green-500/20 text-green-400'
+196:                                                     : 'bg-gray-500/20 text-gray-400'}
+197:                                             `}>
+198:                                                 ● {device.status}
+199:                                             </span>
+200:                                             {overLimit && (
+201:                                                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300">
+202:                                                     Over limit ({device.powerLimit}W)
+203:                                                 </span>
+204:                                             )}
+205:                                         </div>
+206:                                         {device.status === 'ON' && (
+207:                                             <button
+208:                                                 onClick={() => turnOffDevice(device._id)}
+209:                                                 className="text-xs bg-red-500/20 text-red-300 px-3 py-1.5 rounded-lg hover:bg-red-500/30"
+210:                                             >
+211:                                                 Turn OFF
+212:                                             </button>
+213:                                         )}
+214:                                     </div>
+215: 
+216:                                     {deviceReadings.length > 0 ? (
+217:                                         <Graph data={deviceReadings} title={`${device.name} - Power Usage`} />
+218:                                     ) : (
+219:                                         <div className="bg-card border border-border rounded-2xl p-6 text-gray-400 text-sm">
+220:                                             No readings from "{device.name}" yet. Waiting for sensor data...
+221:                                         </div>
+222:                                     )}
+223:                                 </div>
+224:                             );
+225:                         })}
+226:                     </div>
+227: 
+228:                     <div>
+229:                         {cost &&
+230:                             <CostCard cost={cost} />
+231:                         }
+232:                     </div>
+233: 
+234:                 </div>
+235: 
+236:                 {/* ALERTS */}
+237: 
+238:                 <div className="mt-8">
+239:                     <Alerts alerts={alerts} />
+240:                 </div>
+241: 
+242:             </div>
+243: 
+244:         </div>
+245: 
+246:     );
+247: 
+248: }
+249: 
+250: export default Dashboard;
+251: 
+The above content shows the entire, complete file contents of the requested file.
