@@ -149,6 +149,8 @@ const getDashboard = async (req, res) => {
         name: device.name,
         location: device.location || "",
         status: device.status,
+        powerState: device.powerState || "OFF",
+        powerLimit: device.powerLimit || 1000,
         currentPowerW: latestReading
           ? Number(latestReading.power)
           : 0,

@@ -14,11 +14,7 @@ function Devices() {
 
   const fetchDevices = async () => {
     try {
-      const res = await API.get("/devices").catch(e => ({ data: { devices: [
-        { deviceId: '1', name: 'Nexus HVAC Core', powerState: 'ON', status: 'online', powerLimit: 2100, autoOffMinutes: 10, apiKey: 'mock-key-1' },
-        { deviceId: '2', name: 'EV Charger Unit', powerState: 'ON', status: 'online', powerLimit: 7200, autoOffMinutes: 0, apiKey: 'mock-key-2' },
-        { deviceId: '3', name: 'Smart Server Rack', powerState: 'OFF', status: 'offline', powerLimit: 1500, autoOffMinutes: 5, apiKey: 'mock-key-3' }
-      ] } }));
+      const res = await API.get("/devices");
       setDevices(res.data.devices || []);
       setLoading(false);
     } catch (error) {
@@ -64,20 +60,17 @@ function Devices() {
   const addDevice = async (e) => {
     e.preventDefault();
     try {
-      const res = await API.post('/devices', newDevice).catch(e => ({ data: { device: {
-        deviceId: 'new-' + Date.now(),
-        name: newDevice.name,
-        powerLimit: newDevice.powerLimit,
-        autoOffMinutes: newDevice.autoOffMinutes,
-        powerState: 'OFF',
-        status: 'offline',
-        apiKey: 'generated-key-' + Date.now()
-      } } }));
+      const payload = {
+        ...newDevice,
+        deviceId: 'dev-' + Date.now() + '-' + Math.floor(Math.random() * 1000)
+      };
+      const res = await API.post('/devices', payload);
       setDevices([...devices, res.data.device]);
       setShowAddModal(false);
       setNewDevice({ name: '', powerLimit: 1000, autoOffMinutes: 5 });
     } catch (error) {
       console.error("Error adding device:", error);
+      alert("Failed to add device. Please try again.");
     }
   };
 
