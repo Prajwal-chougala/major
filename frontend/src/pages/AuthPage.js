@@ -77,7 +77,7 @@ function AuthPage() {
           <img
             alt="Watwise Logo"
             className="h-7 w-auto object-contain"
-            src="https://lh3.googleusercontent.com/aida/AP1WRLuJKZTRROuMjLpiKEKAXQAVJeuq3uysGxRK4TNcMh7oOK5BgDtNwaZY8dhjvFzpdk-oaQE_Is0fXGV-tmmg07j-hAmVE5kQUmpD2gfTXVNPUjz--F6wNbXHQF8upbBv8Wzdq1A_9WKb5clfPc4p6m4G4lNuMsd0yaa44XMtvDVOhPSVhT6Miv_3oRLhYLKSx5HQIiN5SRwcOr9uDxMAS9e_59XTrDhTdBbd9VBdcN6QzpsQa5-q4O2sswA"
+            src="/logo.jpg"
           />
           <span className="font-bold text-lg text-slate-900 tracking-tight">
             WattWise

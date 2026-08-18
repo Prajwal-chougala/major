@@ -11,7 +11,7 @@ function LandingPage() {
             <img
               alt="Watwise Logo"
               className="h-8 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida/AP1WRLuJKZTRROuMjLpiKEKAXQAVJeuq3uysGxRK4TNcMh7oOK5BgDtNwaZY8dhjvFzpdk-oaQE_Is0fXGV-tmmg07j-hAmVE5kQUmpD2gfTXVNPUjz--F6wNbXHQF8upbBv8Wzdq1A_9WKb5clfPc4p6m4G4lNuMsd0yaa44XMtvDVOhPSVhT6Miv_3oRLhYLKSx5HQIiN5SRwcOr9uDxMAS9e_59XTrDhTdBbd9VBdcN6QzpsQa5-q4O2sswA"
+              src="/logo.jpg"
             />
             <span className="font-bold text-xl text-slate-950 tracking-tight">
               WattWise
@@ -123,7 +123,7 @@ function LandingPage() {
                   <img
                     alt="Smart Home Dashboard Hologram"
                     className="w-full h-full object-cover rounded-2xl opacity-90"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoQuC_3_syJezRcTBCAqciQdftiBRBfvFY4Lv1SydiXvMHx-NhT5l2qRaTwQQBEDzlwlS_jHuzRzyKjsKBSmTdsZVy1fVbVA8R_G3NLlUOL6GfibznCOYY71cxRmulx5gll8tj3Mim_HHmGQLRRCLPBRnUlq4ZNcS6cNPyp2JrHY7W2MWhtifG3wCVw4ueZWvvNmYrJJrAQw24gWSGT42sYAfCgzGM4urWuwMaEh6sjfYD0r1Auyas"
+                    src="/dashboard-hologram.jpg"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent pointer-events-none rounded-2xl"></div>
                   
@@ -361,7 +361,7 @@ function LandingPage() {
               <img
                 alt="Watwise Logo"
                 className="h-6 w-auto object-contain"
-                src="https://lh3.googleusercontent.com/aida/AP1WRLuJKZTRROuMjLpiKEKAXQAVJeuq3uysGxRK4TNcMh7oOK5BgDtNwaZY8dhjvFzpdk-oaQE_Is0fXGV-tmmg07j-hAmVE5kQUmpD2gfTXVNPUjz--F6wNbXHQF8upbBv8Wzdq1A_9WKb5clfPc4p6m4G4lNuMsd0yaa44XMtvDVOhPSVhT6Miv_3oRLhYLKSx5HQIiN5SRwcOr9uDxMAS9e_59XTrDhTdBbd9VBdcN6QzpsQa5-q4O2sswA"
+                src="/logo.jpg"
               />
               <span className="font-bold text-base text-slate-900 tracking-tight">
                 WattWise

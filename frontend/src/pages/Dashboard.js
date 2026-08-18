@@ -177,7 +177,7 @@ function Dashboard() {
                 <img
                   alt="Smart Home Holographic Visualization"
                   className="w-full h-full object-cover opacity-90 rounded-2xl"
-                  src="https://lh3.googleusercontent.com/aida/AP1WRLuMy7QLXSyZ7SB8fKMuTne81Zvk2kzrnpDskVkF-GL7fACa_KcZAMHgMoS0Nss-4EkMI1sKt6vWWlCqXT3hkZancZrhHuyarZXxSjn4RPg74vmMnunjlvR0fH--71BGk-qdytugJ48UUHBcf1mCY-vTc28ef5zgT5HgQGp-kIKNbS4WieE1OYAVuaJpuH5kK0Wrgl8mI8-nZEv_3H4y3WcP6C5-ARWAI0SQxadFp9iifMmKaKflaWm1GzU"
+                  src="/dashboard-hologram.jpg"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
                 <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
