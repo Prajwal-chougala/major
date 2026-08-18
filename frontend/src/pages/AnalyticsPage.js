@@ -11,6 +11,7 @@ import {
   Legend
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import Graph from '../components/Graph';
 
 ChartJS.register(
   CategoryScale,
@@ -28,10 +29,28 @@ function AnalyticsPage() {
   const [deviceBreakdown, setDeviceBreakdown] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDevice, setSelectedDevice] = useState(null);
+  const [selectedDeviceChart, setSelectedDeviceChart] = useState([]);
 
   useEffect(() => {
     fetchData();
   }, [period]);
+
+  useEffect(() => {
+    if (selectedDevice) {
+      API.get(`/power/chart?deviceId=${selectedDevice.deviceId}`)
+        .then(res => {
+          // power comes in kW, Graph component expects W (or we can just map it)
+          const mappedData = (res.data.data || []).map(d => ({
+            ...d,
+            power: d.power * 1000
+          }));
+          setSelectedDeviceChart(mappedData);
+        })
+        .catch(err => console.error("Failed to load device chart", err));
+    } else {
+      setSelectedDeviceChart([]);
+    }
+  }, [selectedDevice]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -267,6 +286,16 @@ function AnalyticsPage() {
                   <span className="font-mono font-bold text-slate-900">{selectedDevice.powerLimit} <span className="text-xs text-slate-400">W</span></span>
                 </div>
               </div>
+
+              {selectedDeviceChart.length > 0 && (
+                <div className="mb-6 h-48 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                  <Graph 
+                    data={selectedDeviceChart} 
+                    title="Power Trace" 
+                    colorHex="#0EA5E9" 
+                  />
+                </div>
+              )}
 
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">Energy & Cost (Today)</h4>
               <div className="space-y-3">

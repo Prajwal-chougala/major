@@ -5,9 +5,14 @@ const getPowerChart = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const devices = await Device.find({
-      owner: userId,
-    })
+    const deviceIdFilter = req.query.deviceId;
+
+    const query = { owner: userId };
+    if (deviceIdFilter) {
+      query.deviceId = deviceIdFilter;
+    }
+
+    const devices = await Device.find(query)
       .select("deviceId")
       .lean();
 
@@ -68,6 +73,7 @@ const getPowerChart = async (req, res) => {
         );
 
         return {
+          timestamp: reading.timestamp,
           time: date.toLocaleTimeString(
             "en-IN",
             {
