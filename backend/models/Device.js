@@ -81,11 +81,10 @@ const deviceSchema = new mongoose.Schema(
   }
 );
 
-deviceSchema.pre("save", function (next) {
+deviceSchema.pre("save", function () {
   if (!this.apiKey) {
     this.apiKey = crypto.randomBytes(24).toString("hex");
   }
-  next();
 });
 
 module.exports = mongoose.model("Device", deviceSchema);
