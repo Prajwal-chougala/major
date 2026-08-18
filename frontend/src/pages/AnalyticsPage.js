@@ -287,15 +287,20 @@ function AnalyticsPage() {
                 </div>
               </div>
 
-              {selectedDeviceChart.length > 0 && (
-                <div className="mb-6 h-48 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <div className="mb-6 h-48 bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col justify-center">
+                {selectedDeviceChart.length > 0 ? (
                   <Graph 
                     data={selectedDeviceChart} 
                     title="Power Trace" 
                     colorHex="#0EA5E9" 
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-400 h-full">
+                    <span className="material-symbols-outlined text-3xl mb-2 opacity-50">show_chart</span>
+                    <p className="text-xs font-semibold">No real-time telemetry data available.</p>
+                  </div>
+                )}
+              </div>
 
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">Energy & Cost (Today)</h4>
               <div className="space-y-3">
