@@ -59,18 +59,45 @@ const createReading = async (req, res) => {
       });
     }
 
+    // Determine local date string in IST (UTC+5:30) for daily resets
+    const now = timestamp ? new Date(timestamp) : new Date();
+    const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+    const currentDateStr = istNow.toISOString().split("T")[0];
+
+    // Find the previous reading to calculate energy
+    const previousReading = await Reading.findOne({ deviceId: device.deviceId })
+      .sort({ timestamp: -1 })
+      .lean();
+
     const reading = await Reading.create({
       deviceId: deviceId.trim(),
       voltage: Number(voltage),
       current: Number(current),
       power: Number(power),
-      timestamp: timestamp
-        ? new Date(timestamp)
-        : new Date(),
+      timestamp: now,
     });
 
-    // Update device's last activity
-    device.lastSeen = new Date();
+    let energyKWh = 0;
+    if (previousReading) {
+      const previousTime = new Date(previousReading.timestamp).getTime();
+      const currentTime = now.getTime();
+      const hours = (currentTime - previousTime) / (1000 * 60 * 60);
+      
+      if (hours > 0 && hours < 24) { // Ignore huge jumps
+        const averagePowerW = (Number(previousReading.power) + Number(power)) / 2;
+        energyKWh = (averagePowerW * hours) / 1000;
+      }
+    }
+
+    // Reset daily energy if it's a new day
+    if (device.dailyEnergyDate !== currentDateStr) {
+      device.dailyEnergyKWh = 0;
+      device.dailyEnergyDate = currentDateStr;
+      device.autoOffDueToLimit = false; // Reset the limit flag on a new day
+    }
+
+    device.dailyEnergyKWh += energyKWh;
+    device.lastSeen = now;
     device.status = "online";
 
     await device.save();

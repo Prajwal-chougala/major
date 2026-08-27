@@ -51,12 +51,27 @@ const deviceSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Power threshold in Watts. When a reading exceeds this, an alert +
-    // SMS fires and an auto-off countdown starts. Null/0 = no limit set.
+    // Power threshold in kWh for daily energy limit. When a reading causes daily
+    // cumulative energy to exceed this, an alert + SMS fires and an auto-off starts.
     powerLimit: {
       type: Number,
       default: null,
       min: 0,
+    },
+
+    dailyEnergyKWh: {
+      type: Number,
+      default: 0,
+    },
+
+    dailyEnergyDate: {
+      type: String,
+      default: "", // Stored as "YYYY-MM-DD" in local time
+    },
+
+    autoOffDueToLimit: {
+      type: Boolean,
+      default: false,
     },
 
     // Minutes to wait after an over-limit reading before auto turn-off.

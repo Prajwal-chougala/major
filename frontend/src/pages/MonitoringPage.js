@@ -246,11 +246,18 @@ function MonitoringPage() {
                           <h3 className="font-bold text-lg text-slate-900 leading-tight">
                             {device.name}
                           </h3>
-                          <div className="flex items-baseline gap-1.5 mt-1">
-                            <span className={`font-mono font-extrabold text-xl ${device.powerState === 'ON' ? 'text-[#35259B]' : 'text-slate-400'}`}>
-                              {device.powerState === 'ON' ? (device.powerLimit || 1.2).toFixed(1) : '0.0'}
-                            </span>
-                            <span className="text-xs font-semibold text-slate-400">kW</span>
+                          <div className="flex flex-col mt-1">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className={`font-mono font-extrabold text-xl ${device.powerState === 'ON' ? 'text-[#35259B]' : 'text-slate-400'}`}>
+                                {(device.energyKWh || 0).toFixed(2)}
+                              </span>
+                              <span className="text-xs font-semibold text-slate-400">kWh today</span>
+                            </div>
+                            {device.powerLimit && (
+                              <div className="text-[10px] font-bold text-slate-400 mt-0.5">
+                                LIMIT: {device.powerLimit} kWh
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

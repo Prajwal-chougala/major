@@ -23,11 +23,11 @@ const clearAutoOffTimer = (deviceObjectId) => {
   }
 };
 
-// If the device has a user-configured powerLimit and this reading exceeds
+// If the device has a user-configured powerLimit and its dailyEnergyKWh exceeds
 // it: create a critical alert, send an SMS, and schedule an auto turn-off
 // unless the user turns the device off manually first.
 const checkPowerLimit = async ({ reading, device }) => {
-  if (!device.powerLimit || Number(reading.power) <= device.powerLimit) {
+  if (!device.powerLimit || device.dailyEnergyKWh <= device.powerLimit) {
     return;
   }
 
@@ -45,10 +45,10 @@ const checkPowerLimit = async ({ reading, device }) => {
     device: device._id,
     deviceId: device.deviceId,
     type: "danger",
-    title: "Power limit exceeded",
-    message: `${device.name} is using ${Number(reading.power).toFixed(
-      1
-    )} W, above its ${device.powerLimit} W limit. It will auto turn OFF in ${minutes} min unless turned off sooner.`,
+    title: "Daily Energy Limit exceeded",
+    message: `${device.name} has used ${device.dailyEnergyKWh.toFixed(
+      2
+    )} kWh today, above its ${device.powerLimit} kWh limit. It will auto turn OFF in ${minutes} min unless turned off sooner.`,
     severity: "critical",
     isRead: false,
   });
@@ -57,9 +57,9 @@ const checkPowerLimit = async ({ reading, device }) => {
 
   sendSmsAlert(
     user ? user.mobile : null,
-    `WattWise ALERT: "${device.name}" is using ${Number(reading.power).toFixed(
-      1
-    )}W, above its ${device.powerLimit}W limit. It will auto turn OFF in ${minutes} min unless you turn it off sooner.`
+    `WattWise ALERT: "${device.name}" has used ${device.dailyEnergyKWh.toFixed(
+      2
+    )} kWh today, above its ${device.powerLimit} kWh limit. It will auto turn OFF in ${minutes} min.`
   );
 
   const timeoutId = setTimeout(async () => {
@@ -68,10 +68,11 @@ const checkPowerLimit = async ({ reading, device }) => {
 
       if (dev && dev.powerState === "ON") {
         dev.powerState = "OFF";
+        dev.autoOffDueToLimit = true; // Mark as auto-off due to energy limit
         await dev.save();
 
         console.log(
-          `[SYSTEM] Auto-turned off device ${dev.name} after ${minutes} min timeout.`
+          `[SYSTEM] Auto-turned off device ${dev.name} after ${minutes} min timeout (Energy Limit).`
         );
 
         await Alert.create({
@@ -80,7 +81,7 @@ const checkPowerLimit = async ({ reading, device }) => {
           deviceId: dev.deviceId,
           type: "info",
           title: "Device auto turned off",
-          message: `${dev.name} was automatically turned off after exceeding its power limit.`,
+          message: `${dev.name} was automatically turned off after exceeding its daily energy limit.`,
           severity: "high",
           isRead: false,
         });
@@ -89,7 +90,7 @@ const checkPowerLimit = async ({ reading, device }) => {
 
         sendSmsAlert(
           u ? u.mobile : null,
-          `WattWise: "${dev.name}" was automatically turned OFF to save energy after exceeding its power limit.`
+          `WattWise: "${dev.name}" was automatically turned OFF to save energy after exceeding its daily budget.`
         );
       }
     } catch (error) {
