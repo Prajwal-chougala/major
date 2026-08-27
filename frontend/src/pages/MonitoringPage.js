@@ -12,46 +12,43 @@ function MonitoringPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dashboardRes] = await Promise.all([
-          API.get('/dashboard').catch(e => ({ data: { currentPowerKW: 4.2, devices: [
-            { deviceId: '1', name: 'HVAC System', powerState: 'ON', status: 'online', powerLimit: 1.2 },
-            { deviceId: '2', name: 'EV Charger', powerState: 'ON', status: 'online', powerLimit: 7.4 },
-            { deviceId: '3', name: 'Pool Pump', powerState: 'OFF', status: 'offline', powerLimit: 0.8 },
-            { deviceId: '4', name: 'Home Server', powerState: 'ON', status: 'online', powerLimit: 0.4 }
-          ] } }))
-        ]);
+        const dashboardRes = await API.get('/dashboard');
         
         setInsights({
           totalPower: dashboardRes.data?.currentPowerKW || 0,
           voltage: 238, // Simulated since it's not in dashboard endpoint
           frequency: 60.0 // Simulated
         });
-        setDevices(dashboardRes.data?.devices || []);
+        
+        const fetchedDevices = dashboardRes.data?.devices || [];
+        setDevices(fetchedDevices);
         setLoading(false);
 
-        // Update real-time history for each device
-        setDeviceHistory(prev => {
-          const newHistory = { ...prev };
-          const now = Date.now();
-          (dashboardRes.data?.devices || []).forEach(device => {
-             if (!newHistory[device.deviceId]) {
-               newHistory[device.deviceId] = Array.from({ length: 15 }, (_, i) => ({ 
-                 timestamp: now - (14 - i) * 5000, 
-                 power: Math.random() * (device.powerLimit || 1) + ((device.powerLimit || 1.2) * 0.5) 
-               }));
-             }
-             
-             // Append new point
-             const currentPower = device.powerState === 'ON' ? (Math.random() * (device.powerLimit || 1) + ((device.powerLimit || 1.2) * 0.5)) : 0;
-             newHistory[device.deviceId] = [...newHistory[device.deviceId], { timestamp: now, power: currentPower }];
-             
-             // Keep only last 15 points
-             if (newHistory[device.deviceId].length > 15) {
-                newHistory[device.deviceId].shift();
-             }
-          });
-          return newHistory;
+        // Fetch real-time history for each device
+        const historyPromises = fetchedDevices.map(device => 
+            API.get(`/readings/${device.deviceId}`)
+              .then(res => ({
+                deviceId: device.deviceId,
+                readings: res.data.readings
+              }))
+              .catch(() => ({ deviceId: device.deviceId, readings: [] }))
+        );
+        
+        const historyResults = await Promise.all(historyPromises);
+        
+        const newHistory = {};
+        historyResults.forEach(result => {
+             newHistory[result.deviceId] = result.readings
+                 .slice(0, 15)
+                 .reverse()
+                 .map(r => ({
+                     timestamp: new Date(r.timestamp).getTime(),
+                     power: Number(r.power) || 0
+                 }));
         });
+        
+        setDeviceHistory(newHistory);
+
       } catch (error) {
         console.error(error);
         setLoading(false);
@@ -66,10 +63,10 @@ function MonitoringPage() {
   const toggleDevice = async (id, currentState) => {
     try {
       if (currentState === "ON") {
-        await API.post(`/devices/${id}/turn-off`).catch(e => console.log('API Failed but updating UI locally'));
+        await API.post(`/devices/${id}/turn-off`);
         setDevices(devices.map(d => d.deviceId === id ? { ...d, powerState: 'OFF' } : d));
       } else {
-        await API.post(`/devices/${id}/turn-on`).catch(e => console.log('API Failed but updating UI locally'));
+        await API.post(`/devices/${id}/turn-on`);
         setDevices(devices.map(d => d.deviceId === id ? { ...d, powerState: 'ON' } : d));
       }
     } catch (error) {
