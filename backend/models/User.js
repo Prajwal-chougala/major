@@ -20,12 +20,16 @@ const userSchema = new mongoose.Schema(
     },
 
     mobile: {
-  type: String,
-  required: true,
-  unique: true,
-  trim: true,
-  index: true,
-},
+      type: String,
+      trim: true,
+      index: true,
+    },
+
+    // Legacy mobile field for backward compatibility
+    mobileNumber: {
+      type: String,
+      trim: true,
+    },
 
     passwordHash: {
       type: String,

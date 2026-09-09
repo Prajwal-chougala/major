@@ -6,10 +6,14 @@ function Devices() {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newDevice, setNewDevice] = useState({ name: '', powerLimit: 1000, autoOffMinutes: 5 });
+  const [newDevice, setNewDevice] = useState({ name: '', powerLimit: 2.5 });
+  const [editingDevice, setEditingDevice] = useState(null);
+  const [editThreshold, setEditThreshold] = useState('');
 
   useEffect(() => {
     fetchDevices();
+    const interval = setInterval(fetchDevices, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDevices = async () => {
@@ -72,10 +76,26 @@ function Devices() {
       const res = await API.post('/devices', payload);
       setDevices([...devices, res.data.device]);
       setShowAddModal(false);
-      setNewDevice({ name: '', powerLimit: 1000, autoOffMinutes: 5 });
+      setNewDevice({ name: '', powerLimit: 2.5 });
     } catch (error) {
       console.error("Error adding device:", error);
       alert("Failed to add device. Please try again.");
+    }
+  };
+
+  const updateThreshold = async (e) => {
+    e.preventDefault();
+    if (!editingDevice) return;
+    try {
+      const val = Number(editThreshold);
+      await API.put(`/devices/${editingDevice.deviceId}`, {
+        powerLimit: val,
+      });
+      setDevices(devices.map(d => d.deviceId === editingDevice.deviceId ? { ...d, powerLimit: val } : d));
+      setEditingDevice(null);
+    } catch (error) {
+      console.error("Error updating threshold:", error);
+      alert("Failed to update threshold.");
     }
   };
 
@@ -127,16 +147,41 @@ function Devices() {
                     <input type="text" required value={newDevice.name} onChange={e => setNewDevice({...newDevice, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all placeholder:text-slate-400" placeholder="e.g. Nexus HVAC Core" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">POWER LIMIT (WATTS)</label>
-                    <input type="number" required min="1" value={newDevice.powerLimit} onChange={e => setNewDevice({...newDevice, powerLimit: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all" />
+                    <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">DAILY ENERGY THRESHOLD (kWh)</label>
+                    <input type="number" step="0.1" min="0.01" required value={newDevice.powerLimit} onChange={e => setNewDevice({...newDevice, powerLimit: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all" placeholder="e.g. 2.5" />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">AUTO-OFF MINUTES</label>
-                    <input type="number" min="0" value={newDevice.autoOffMinutes} onChange={e => setNewDevice({...newDevice, autoOffMinutes: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all" />
-                  </div>
+
                   <div className="flex justify-end gap-4 mt-4 pt-6 border-t border-slate-100">
                     <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 rounded-full text-slate-400 font-bold tracking-wider hover:bg-slate-100 transition-colors text-xs">CANCEL</button>
                     <button type="submit" className="px-8 py-3 rounded-full bg-gradient-to-r from-[#35259B] to-[#0EA5E9] text-white font-bold tracking-wider hover:opacity-90 transition-all shadow-md shadow-sky-500/10 text-xs">REGISTER</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {editingDevice && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-slate-200 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Set Energy Threshold</h2>
+                    <p className="text-xs text-slate-400 mt-1">{editingDevice.name}</p>
+                  </div>
+                  <button onClick={() => setEditingDevice(null)} className="text-slate-400 hover:text-slate-700 transition-colors">
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <form onSubmit={updateThreshold} className="flex flex-col gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">DAILY ENERGY LIMIT (kWh)</label>
+                    <input type="number" step="0.1" min="0.01" required value={editThreshold} onChange={e => setEditThreshold(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all" placeholder="e.g. 2.5" />
+                    <p className="text-[11px] text-slate-400 mt-2">When energy consumption hits this threshold, the device automatically turns off and an SMS is sent to your registered number.</p>
+                  </div>
+
+                  <div className="flex justify-end gap-4 mt-4 pt-6 border-t border-slate-100">
+                    <button type="button" onClick={() => setEditingDevice(null)} className="px-6 py-3 rounded-full text-slate-400 font-bold tracking-wider hover:bg-slate-100 transition-colors text-xs">CANCEL</button>
+                    <button type="submit" className="px-8 py-3 rounded-full bg-gradient-to-r from-[#35259B] to-[#0EA5E9] text-white font-bold tracking-wider hover:opacity-90 transition-all shadow-md shadow-sky-500/10 text-xs">SAVE THRESHOLD</button>
                   </div>
                 </form>
               </div>
@@ -180,33 +225,39 @@ function Devices() {
                     <div className="grid grid-cols-2 gap-6 mb-8 relative z-10">
                       <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2 hover:bg-slate-100 transition-colors">
                         <span className="font-label-caps text-slate-400 font-bold text-[10px] tracking-wider uppercase">
-                          POWER LIMIT
+                          ENERGY THRESHOLD
                         </span>
                         <div className="flex items-baseline gap-1 mt-1">
                           <span className={`text-3xl font-extrabold font-mono ${device.powerState === 'ON' ? 'text-[#0EA5E9]' : 'text-slate-400'}`}>
-                            {device.powerLimit || 'N/A'}
+                            {device.powerLimit !== null && device.powerLimit !== undefined ? device.powerLimit : 'N/A'}
                           </span>
                           <span className="text-xs font-semibold text-slate-400">
-                            W
+                            kWh
                           </span>
                         </div>
                       </div>
                       <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2 hover:bg-slate-100 transition-colors">
                         <span className="font-label-caps text-slate-400 font-bold text-[10px] tracking-wider uppercase">
-                          AUTO-OFF TIMER
+                          CONSUMED TODAY
                         </span>
                         <div className="flex items-baseline gap-1 mt-1">
                           <span className={`text-3xl font-extrabold font-mono ${device.powerState === 'ON' ? 'text-[#35259B]' : 'text-slate-400'}`}>
-                            {device.autoOffMinutes || '--'}
+                            {(device.dailyEnergyKWh || 0).toFixed(2)}
                           </span>
                           <span className="text-xs font-semibold text-slate-400">
-                            Mins
+                            kWh
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center justify-between border-t border-slate-100 pt-6 relative z-10">
                       <div className="flex items-center gap-2">
+                        <button onClick={() => { setEditingDevice(device); setEditThreshold(device.powerLimit !== null && device.powerLimit !== undefined ? device.powerLimit : 2.5); }} className="px-3 py-1.5 rounded-lg border border-sky-200 text-[#0EA5E9] font-label-caps text-[10px] font-bold hover:bg-sky-50 transition-colors flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm">
+                            tune
+                          </span>{" "}
+                          EDIT THRESHOLD
+                        </button>
                         <button onClick={() => regenerateKey(device.deviceId)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 font-label-caps text-[10px] font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors flex items-center gap-1.5">
                           <span className="material-symbols-outlined text-sm">
                             refresh

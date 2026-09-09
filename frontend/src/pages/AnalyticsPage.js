@@ -282,8 +282,8 @@ function AnalyticsPage() {
                   <span className="font-mono font-bold text-slate-900">{selectedDevice.currentPowerW} <span className="text-xs text-slate-400">W</span></span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-slate-500">Power Limit</span>
-                  <span className="font-mono font-bold text-slate-900">{selectedDevice.powerLimit} <span className="text-xs text-slate-400">W</span></span>
+                  <span className="text-sm font-semibold text-slate-500">Energy Threshold</span>
+                  <span className="font-mono font-bold text-slate-900">{selectedDevice.powerLimit !== null && selectedDevice.powerLimit !== undefined ? selectedDevice.powerLimit : 'N/A'} <span className="text-xs text-slate-400">kWh</span></span>
                 </div>
               </div>
 

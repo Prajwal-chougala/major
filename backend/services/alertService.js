@@ -1,106 +1,96 @@
 const Alert = require("../models/Alert");
 const Device = require("../models/Device");
 const User = require("../models/User");
-const { sendSmsAlert } = require("../utils/notify");
+const { sendSmsAlert, sendEmailAlert } = require("../utils/notify");
 
 const POWER_WARNING_KW = 1.0;
 const POWER_DANGER_KW = 2.0;
 
-const AUTO_OFF_MINUTES = Number(process.env.AUTO_OFF_MINUTES) || 5;
-
-// In-memory: deviceId (Mongo _id string) -> timeoutId for a pending
-// auto-off. Resets if the server restarts (see README/known limitations).
-const autoOffTimers = new Map();
+// Track which devices have already been alerted today to avoid spam.
+// Key: deviceId string, Value: date string "YYYY-MM-DD"
+const alertedToday = new Map();
 
 // Called from deviceController when a user manually turns a device off/on,
-// so a stale timer doesn't switch it off again after the user already acted.
-const clearAutoOffTimer = (deviceObjectId) => {
-  const key = deviceObjectId.toString();
-
-  if (autoOffTimers.has(key)) {
-    clearTimeout(autoOffTimers.get(key));
-    autoOffTimers.delete(key);
-  }
+// so we can reset the alert flag if needed.
+const clearAutoOffTimer = (deviceIdentifier) => {
+  if (!deviceIdentifier) return;
+  const key = deviceIdentifier.toString();
+  alertedToday.delete(key);
 };
 
-// If the device has a user-configured powerLimit and its dailyEnergyKWh exceeds
-// it: create a critical alert, send an SMS, and schedule an auto turn-off
-// unless the user turns the device off manually first.
-const checkPowerLimit = async ({ reading, device }) => {
-  if (!device.powerLimit || device.dailyEnergyKWh <= device.powerLimit) {
+// If the device has a user-configured energy threshold (powerLimit in kWh) and its dailyEnergyKWh
+// reaches or exceeds it: IMMEDIATELY turn off the device, create a critical alert, and send SMS + email.
+const checkEnergyLimit = async ({ reading, device }) => {
+  const thresholdKWh = Number(device.powerLimit);
+  const currentEnergyKWh = Number(device.dailyEnergyKWh) || 0;
+
+  if (!thresholdKWh || thresholdKWh <= 0 || currentEnergyKWh < thresholdKWh) {
     return;
   }
 
   const key = device._id.toString();
 
-  // Already alerted + timer running for this device - don't spam.
-  if (autoOffTimers.has(key)) {
+  // Check if we already alerted for this device today - don't spam.
+  const now = new Date();
+  const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+  const todayStr = istNow.toISOString().split("T")[0];
+
+  if (alertedToday.get(key) === todayStr && device.powerState === "OFF") {
     return;
   }
 
-  const minutes = device.autoOffMinutes || AUTO_OFF_MINUTES;
+  alertedToday.set(key, todayStr);
+  if (device.deviceId) {
+    alertedToday.set(device.deviceId, todayStr);
+  }
 
+  // --- IMMEDIATELY turn off the device ---
+  device.powerState = "OFF";
+  device.autoOffDueToLimit = true;
+  await device.save();
+
+  console.log(
+    `[SYSTEM] Energy threshold hit! Automatically turned OFF device "${device.name}" (${device.deviceId}) - Used ${currentEnergyKWh.toFixed(3)} kWh (Threshold: ${thresholdKWh} kWh).`
+  );
+
+  // Create alert in database
   await Alert.create({
     owner: device.owner,
     device: device._id,
     deviceId: device.deviceId,
     type: "danger",
-    title: "Daily Energy Limit exceeded",
-    message: `${device.name} has used ${device.dailyEnergyKWh.toFixed(
-      2
-    )} kWh today, above its ${device.powerLimit} kWh limit. It will auto turn OFF in ${minutes} min unless turned off sooner.`,
+    title: `Energy Threshold Hit — ${device.name} Turned OFF`,
+    message: `${device.name} has consumed ${currentEnergyKWh.toFixed(
+      3
+    )} kWh today, reaching the threshold of ${thresholdKWh} kWh. The system has automatically turned OFF the device.`,
     severity: "critical",
     isRead: false,
   });
 
+  // Fetch registered user for contact details
   const user = await User.findById(device.owner);
+  const mobile = user ? (user.mobile || user.mobileNumber) : null;
 
-  sendSmsAlert(
-    user ? user.mobile : null,
-    `WattWise ALERT: "${device.name}" has used ${device.dailyEnergyKWh.toFixed(
-      2
-    )} kWh today, above its ${device.powerLimit} kWh limit. It will auto turn OFF in ${minutes} min.`
-  );
+  const alertMessage = `WattWise ALERT: "${device.name}" has reached your energy threshold with ${currentEnergyKWh.toFixed(
+    3
+  )} kWh consumed today (Threshold: ${thresholdKWh} kWh). The device has been automatically turned OFF.`;
 
-  const timeoutId = setTimeout(async () => {
-    try {
-      const dev = await Device.findById(device._id);
+  // Send SMS to user's registered number
+  if (mobile) {
+    console.log(`[ALERT] Sending threshold SMS to registered number: ${mobile}`);
+    await sendSmsAlert(mobile, alertMessage);
+  } else {
+    console.warn(`[ALERT] No mobile number registered for user ${device.owner}, unable to send SMS.`);
+  }
 
-      if (dev && dev.powerState === "ON") {
-        dev.powerState = "OFF";
-        dev.autoOffDueToLimit = true; // Mark as auto-off due to energy limit
-        await dev.save();
-
-        console.log(
-          `[SYSTEM] Auto-turned off device ${dev.name} after ${minutes} min timeout (Energy Limit).`
-        );
-
-        await Alert.create({
-          owner: dev.owner,
-          device: dev._id,
-          deviceId: dev.deviceId,
-          type: "info",
-          title: "Device auto turned off",
-          message: `${dev.name} was automatically turned off after exceeding its daily energy limit.`,
-          severity: "high",
-          isRead: false,
-        });
-
-        const u = await User.findById(dev.owner);
-
-        sendSmsAlert(
-          u ? u.mobile : null,
-          `WattWise: "${dev.name}" was automatically turned OFF to save energy after exceeding its daily budget.`
-        );
-      }
-    } catch (error) {
-      console.error("Auto-off timer error:", error);
-    }
-
-    autoOffTimers.delete(key);
-  }, minutes * 60 * 1000);
-
-  autoOffTimers.set(key, timeoutId);
+  // Send Email as secondary notification
+  if (user && user.email) {
+    await sendEmailAlert(
+      user.email,
+      `⚡ WattWise: "${device.name}" turned OFF - Energy threshold reached`,
+      alertMessage
+    );
+  }
 };
 
 const createReadingAlerts = async ({
@@ -156,8 +146,8 @@ const createReadingAlerts = async ({
       }
     }
 
-    // Per-device configured limit: alert + SMS + auto-off countdown.
-    await checkPowerLimit({ reading, device });
+    // Per-device configured energy threshold: auto-turn off + SMS + alert.
+    await checkEnergyLimit({ reading, device });
   } catch (error) {
     // Alert creation must not cause the
     // actual reading ingestion to fail.

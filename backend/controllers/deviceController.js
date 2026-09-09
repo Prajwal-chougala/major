@@ -4,7 +4,7 @@ const { clearAutoOffTimer } = require("../services/alertService");
 // Create a new device
 const createDevice = async (req, res) => {
   try {
-    const { deviceId, name, location, powerLimit, autoOffMinutes } = req.body;
+    const { deviceId, name, location, powerLimit } = req.body;
 
     if (!deviceId || !name) {
       return res.status(400).json({
@@ -29,8 +29,6 @@ const createDevice = async (req, res) => {
       owner: req.user.userId,
       status: "offline",
       powerLimit: powerLimit !== undefined ? Number(powerLimit) : null,
-      autoOffMinutes:
-        autoOffMinutes !== undefined ? Number(autoOffMinutes) : null,
     });
 
     return res.status(201).json({
@@ -103,7 +101,7 @@ const getDeviceById = async (req, res) => {
 const updateDevice = async (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { name, location, powerLimit, autoOffMinutes } = req.body;
+    const { name, location, powerLimit } = req.body;
 
     const device = await Device.findOne({
       deviceId,
@@ -126,11 +124,11 @@ const updateDevice = async (req, res) => {
 
     if (powerLimit !== undefined) {
       device.powerLimit = powerLimit === null ? null : Number(powerLimit);
-    }
-
-    if (autoOffMinutes !== undefined) {
-      device.autoOffMinutes =
-        autoOffMinutes === null ? null : Number(autoOffMinutes);
+      clearAutoOffTimer(device._id);
+      clearAutoOffTimer(device.deviceId);
+      if (device.powerLimit && device.dailyEnergyKWh < device.powerLimit) {
+        device.autoOffDueToLimit = false;
+      }
     }
 
     await device.save();
@@ -233,6 +231,9 @@ const turnOnDevice = async (req, res) => {
     }
 
     device.powerState = "ON";
+    device.autoOffDueToLimit = false;
+    clearAutoOffTimer(device._id);
+    clearAutoOffTimer(device.deviceId);
 
     await device.save();
 

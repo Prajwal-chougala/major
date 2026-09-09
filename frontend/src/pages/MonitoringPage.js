@@ -60,19 +60,7 @@ function MonitoringPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const toggleDevice = async (id, currentState) => {
-    try {
-      if (currentState === "ON") {
-        await API.post(`/devices/${id}/turn-off`);
-        setDevices(devices.map(d => d.deviceId === id ? { ...d, powerState: 'OFF' } : d));
-      } else {
-        await API.post(`/devices/${id}/turn-on`);
-        setDevices(devices.map(d => d.deviceId === id ? { ...d, powerState: 'ON' } : d));
-      }
-    } catch (error) {
-      console.error("Error toggling device:", error);
-    }
-  };
+
 
   if (loading) {
     return (
@@ -261,17 +249,8 @@ function MonitoringPage() {
                           </div>
                         </div>
                       </div>
-                      
-                      <label className="relative inline-flex items-center cursor-pointer mt-2">
-                        <input
-                          checked={device.powerState === 'ON'}
-                          onChange={() => toggleDevice(device.deviceId, device.powerState)}
-                          className="sr-only peer"
-                          type="checkbox"
-                        />
-                        <div className="w-14 h-7 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[#35259B] shadow-inner border border-slate-300"></div>
-                      </label>
                     </div>
+
                     
                     <div className="h-48 w-full relative z-10 flex flex-1 items-end mt-4">
                       {device.powerState === 'ON' ? (

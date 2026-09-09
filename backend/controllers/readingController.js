@@ -96,19 +96,20 @@ const createReading = async (req, res) => {
       device.autoOffDueToLimit = false; // Reset the limit flag on a new day
     }
 
-    device.dailyEnergyKWh += energyKWh;
+    device.dailyEnergyKWh = Number(((device.dailyEnergyKWh || 0) + energyKWh).toFixed(4));
     device.lastSeen = now;
     device.status = "online";
 
     await device.save();
 
-    // Evaluate the new reading for threshold/limit alerts (SMS + auto-off
-    // if the device has a configured powerLimit). Errors here are logged
-    // internally and never fail the reading write itself.
+    // Evaluate the new reading for energy threshold alert (SMS + auto-off
+    // if the device has a configured energy limit).
     await createReadingAlerts({ reading, device });
 
     return res.status(201).json({
       message: "Reading stored successfully.",
+      powerState: device.powerState,
+      dailyEnergyKWh: device.dailyEnergyKWh,
       reading,
     });
   } catch (error) {

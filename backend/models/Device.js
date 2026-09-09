@@ -74,13 +74,7 @@ const deviceSchema = new mongoose.Schema(
       default: false,
     },
 
-    // Minutes to wait after an over-limit reading before auto turn-off.
-    // Falls back to AUTO_OFF_MINUTES env var when not set.
-    autoOffMinutes: {
-      type: Number,
-      default: null,
-      min: 1,
-    },
+
 
     // Whether the appliance itself should currently be powered - distinct
     // from `status` above, which just tracks online/offline connectivity.

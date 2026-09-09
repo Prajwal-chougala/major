@@ -7,29 +7,31 @@ const { createReadingAlerts } = require("../services/alertService");
 const ingestReading = async (req, res) => {
   try {
     const device = req.device; // set by apiKeyMiddleware
-    const { voltage, current, power, timestamp } = req.body;
+    let { voltage, current, power, timestamp } = req.body;
 
-    if (
-      voltage === undefined ||
-      current === undefined ||
-      power === undefined
+    // Support flexible hardware payloads:
+    // If power is provided without voltage/current, infer them.
+    if (power !== undefined && Number.isFinite(Number(power))) {
+      power = Number(power);
+      voltage = voltage !== undefined && Number.isFinite(Number(voltage)) ? Number(voltage) : 230;
+      current = current !== undefined && Number.isFinite(Number(current)) ? Number(current) : Number((power / (voltage || 230)).toFixed(3));
+    } else if (
+      voltage !== undefined &&
+      current !== undefined &&
+      Number.isFinite(Number(voltage)) &&
+      Number.isFinite(Number(current))
     ) {
+      voltage = Number(voltage);
+      current = Number(current);
+      power = Number((voltage * current).toFixed(2));
+    } else {
       return res.status(400).json({
-        message: "voltage, current and power are required.",
+        message: "Valid power reading (or voltage and current) is required.",
       });
     }
 
-    if (
-      !Number.isFinite(Number(voltage)) ||
-      !Number.isFinite(Number(current)) ||
-      !Number.isFinite(Number(power))
-    ) {
-      return res.status(400).json({
-        message: "voltage, current and power must be valid numbers.",
-      });
-    }
-
-    device.lastSeen = new Date();
+    const now = timestamp ? new Date(timestamp) : new Date();
+    device.lastSeen = now;
     device.status = "online";
 
     if (device.powerState === "OFF") {
@@ -40,24 +42,58 @@ const ingestReading = async (req, res) => {
       return res.status(200).json({
         message: "Device is OFF, reading ignored.",
         powerState: "OFF",
+        dailyEnergyKWh: device.dailyEnergyKWh || 0,
       });
     }
 
+    // Determine local date string in IST (UTC+5:30) for daily energy resets
+    const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+    const currentDateStr = istNow.toISOString().split("T")[0];
+
+    // Find the previous reading to calculate incremental electric energy (kWh)
+    const previousReading = await Reading.findOne({ deviceId: device.deviceId })
+      .sort({ timestamp: -1 })
+      .lean();
+
     const reading = await Reading.create({
       deviceId: device.deviceId,
-      voltage: Number(voltage),
-      current: Number(current),
-      power: Number(power),
-      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      voltage,
+      current,
+      power,
+      timestamp: now,
     });
+
+    let energyKWh = 0;
+    if (previousReading) {
+      const previousTime = new Date(previousReading.timestamp).getTime();
+      const currentTime = now.getTime();
+      const hours = (currentTime - previousTime) / (1000 * 60 * 60);
+
+      if (hours > 0 && hours < 24) {
+        // Trapezoidal integration: average power (W) * hours / 1000 = kWh
+        const averagePowerW = (Number(previousReading.power) + power) / 2;
+        energyKWh = (averagePowerW * hours) / 1000;
+      }
+    }
+
+    // Reset daily energy if it's a new day
+    if (device.dailyEnergyDate !== currentDateStr) {
+      device.dailyEnergyKWh = 0;
+      device.dailyEnergyDate = currentDateStr;
+      device.autoOffDueToLimit = false;
+    }
+
+    device.dailyEnergyKWh = Number(((device.dailyEnergyKWh || 0) + energyKWh).toFixed(4));
 
     await device.save();
 
+    // Evaluate energy threshold: will automatically turn device OFF and send SMS if limit exceeded
     await createReadingAlerts({ reading, device });
 
     return res.status(201).json({
       message: "Reading stored successfully.",
       powerState: device.powerState,
+      dailyEnergyKWh: device.dailyEnergyKWh,
       reading,
     });
   } catch (error) {
@@ -79,6 +115,8 @@ const getIngestStatus = async (req, res) => {
     return res.status(200).json({
       powerState: device.powerState,
       powerLimit: device.powerLimit,
+      dailyEnergyKWh: device.dailyEnergyKWh || 0,
+      autoOffDueToLimit: !!device.autoOffDueToLimit,
     });
   } catch (error) {
     console.error("Get ingest status error:", error);

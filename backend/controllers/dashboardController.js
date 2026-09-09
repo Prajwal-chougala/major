@@ -73,6 +73,8 @@ const getDashboard = async (req, res) => {
     let peakPowerW = 0;
     let currentPowerW = 0;
 
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+
     const deviceSummaries = [];
 
     for (const device of devices) {
@@ -142,31 +144,38 @@ const getDashboard = async (req, res) => {
           (averagePowerW * hours) / 1000;
       }
 
-      totalEnergyKWh += deviceEnergyKWh;
+      const activeEnergyKWh = Math.max(Number(device.dailyEnergyKWh || 0), deviceEnergyKWh);
+      totalEnergyKWh += activeEnergyKWh;
 
       deviceSummaries.push({
         deviceId: device.deviceId,
         name: device.name,
         location: device.location || "",
         status: device.status,
+        isOnline: !!(device.lastSeen && new Date(device.lastSeen) >= twoMinutesAgo),
         powerState: device.powerState || "OFF",
-        powerLimit: device.powerLimit || 1000,
+        powerLimit: device.powerLimit !== undefined && device.powerLimit !== null ? device.powerLimit : null,
         currentPowerW: latestReading
           ? Number(latestReading.power)
           : 0,
         energyKWh: Number(
-          deviceEnergyKWh.toFixed(4)
+          activeEnergyKWh.toFixed(4)
         ),
         lastSeen: device.lastSeen,
       });
     }
 
+    // Active = user has powered the device ON via the app
     const activeDevices = devices.filter(
-      (device) => device.status === "online"
+      (device) => device.powerState === "ON"
     ).length;
 
-    const offlineDevices =
-      devices.length - activeDevices;
+    // Hardware online = device sent a reading within the last 2 minutes
+    const hardwareOnline = devices.filter(
+      (device) => device.lastSeen && new Date(device.lastSeen) >= twoMinutesAgo
+    ).length;
+
+    const offlineDevices = devices.length - activeDevices;
 
     const estimatedCost =
       totalEnergyKWh * RATE_PER_KWH;
@@ -181,6 +190,8 @@ const getDashboard = async (req, res) => {
       ),
 
       activeDevices,
+
+      hardwareOnline,
 
       totalDevices: devices.length,
 

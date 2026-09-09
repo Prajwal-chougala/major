@@ -1,85 +1,128 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import API from "../services/api";
 import Graph from "../components/Graph";
 
+// Full gauge circumference for r=54: 2π×54 ≈ 339.29
+// Visible arc is 3/4 of that: 251
+const GAUGE_ARC = 251;
+const GAUGE_TOTAL = 339.29;
+// Assume max capacity of 20 kW for a home grid
+const MAX_CAPACITY_KW = 20;
+
 function Dashboard() {
+  const navigate = useNavigate();
   const [insights, setInsights] = useState(null);
-  const [alerts, setAlerts] = useState([]);
   const [cost, setCost] = useState(null);
   const [chartHistory, setChartHistory] = useState([]);
   const [devices, setDevices] = useState([]);
+  const [deviceCounts, setDeviceCounts] = useState({ active: 0, offline: 0, total: 0, hardware: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAll = async () => {
+    // Initial load: fetch real chart history first
+    const initChart = async () => {
       try {
-        const [dashboardRes, chartRes] = await Promise.all([
-          API.get('/dashboard').catch(e => ({ data: { totalEnergyKWh: 0, currentPowerKW: 4.2, estimatedCost: 142.50, peakPowerKW: 6.8, devices: [] } })),
-          API.get('/power/chart?period=today').catch(e => ({ data: { data: [] } }))
-        ]);
-        
-        setInsights({
-          totalPower: (dashboardRes.data?.currentPowerKW || 0) * 1000,
-          highestPower: (dashboardRes.data?.peakPowerKW || 0) * 1000
-        });
-        setCost({ estimatedCost: dashboardRes.data?.estimatedCost || 0 });
-        
-        // Update Chart History with moving window
-        const now = Date.now();
-        const latestPower = (dashboardRes.data?.currentPowerKW || 0) * 1000;
-        
-        setChartHistory(prev => {
-          if (prev.length === 0) {
-             // Initialize
-             return Array.from({ length: 24 }, (_, i) => ({ 
-               timestamp: now - (23 - i) * 5000, 
-               power: Math.random() * 5000 + 2000 
-             }));
-          }
-          const newHistory = [...prev, { timestamp: now, power: latestPower }];
-          if (newHistory.length > 24) newHistory.shift();
-          return newHistory;
-        });
-
-        setDevices(dashboardRes.data?.devices || []);
-        setLoading(false);
-      } catch (error) {
-        console.log(error);
-        setLoading(false);
+        const chartRes = await API.get('/power/chart');
+        if (chartRes.data?.data?.length > 0) {
+          const chartData = chartRes.data.data.map(item => ({
+            timestamp: new Date(item.timestamp).getTime(),
+            power: (item.power || 0) * 1000, // convert kW → W for the Graph component
+          }));
+          setChartHistory(chartData.slice(-30));
+        }
+      } catch (e) {
+        // ignore, will build chart from live polling
       }
     };
 
+    initChart();
     fetchAll();
     const interval = setInterval(fetchAll, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const turnOffDevice = async (deviceId, currentStatus) => {
+  const fetchAll = async () => {
     try {
-      // Optimistic UI update first using functional state
-      setDevices(prevDevices => prevDevices.map(d => 
-        d.deviceId === deviceId 
-          ? { ...d, powerState: currentStatus === 'ON' ? 'OFF' : 'ON' } 
-          : d
-      ));
+      const dashboardRes = await API.get('/dashboard').catch(() => ({
+        data: { totalEnergyKWh: 0, currentPowerKW: 0, estimatedCost: 0, peakPowerKW: 0, devices: [], activeDevices: 0, totalDevices: 0, offlineDevices: 0 }
+      }));
 
-      if (currentStatus === 'ON') {
-        await API.post(`/devices/${deviceId}/turn-off`).catch(e => console.log('API Failed but updating UI locally'));
-      } else {
-        await API.post(`/devices/${deviceId}/turn-on`).catch(e => console.log('API Failed but updating UI locally'));
-      }
+      const data = dashboardRes.data;
+
+      setInsights({
+        totalPower: (data?.currentPowerKW || 0) * 1000,
+        highestPower: (data?.peakPowerKW || 0) * 1000,
+        totalEnergyKWh: data?.totalEnergyKWh || 0,
+        ratePerKWh: data?.ratePerKWh || 8,
+      });
+
+      setCost({ estimatedCost: data?.estimatedCost || 0 });
+
+      setDeviceCounts({
+        active: data?.activeDevices || 0,
+        offline: data?.offlineDevices || 0,
+        total: data?.totalDevices || 0,
+        hardware: data?.hardwareOnline || 0,
+      });
+
+      setDevices(data?.devices || []);
+
+      // Append live point to chart
+      const now = Date.now();
+      const latestPowerW = (data?.currentPowerKW || 0) * 1000;
+      setChartHistory(prev => {
+        if (prev.length === 0) return [{ timestamp: now, power: latestPowerW }];
+        const newHistory = [...prev, { timestamp: now, power: latestPowerW }];
+        if (newHistory.length > 60) newHistory.shift();
+        return newHistory;
+      });
+
+      setLoading(false);
     } catch (error) {
       console.log(error);
+      setLoading(false);
     }
   };
+
+  const toggleDevice = async (deviceId, currentStatus) => {
+    setDevices(prev => prev.map(d =>
+      d.deviceId === deviceId
+        ? { ...d, powerState: currentStatus === 'ON' ? 'OFF' : 'ON' }
+        : d
+    ));
+    try {
+      if (currentStatus === 'ON') {
+        await API.post(`/devices/${deviceId}/turn-off`);
+      } else {
+        await API.post(`/devices/${deviceId}/turn-on`);
+      }
+    } catch (e) {
+      // Revert on failure
+      setDevices(prev => prev.map(d =>
+        d.deviceId === deviceId ? { ...d, powerState: currentStatus } : d
+      ));
+    }
+  };
+
+  // Compute dynamic gauge arc fill
+  const currentKW = insights?.totalPower ? insights.totalPower / 1000 : 0;
+  const gaugeFill = Math.min((currentKW / MAX_CAPACITY_KW) * GAUGE_ARC, GAUGE_ARC);
+  const gaugeEmpty = GAUGE_TOTAL - gaugeFill;
+  const peakKW = insights?.highestPower ? insights.highestPower / 1000 : 0;
+
+  const vsAvgPct = peakKW > 0 && currentKW > 0
+    ? Math.round(((currentKW - peakKW * 0.75) / (peakKW * 0.75)) * 100)
+    : null;
+
+  const deviceIcons = ['mode_fan', 'ev_station', 'kitchen', 'ac_unit', 'water_heater', 'computer'];
 
   if (loading) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-screen bg-slate-50 text-[#0EA5E9]">
-            <span className="material-symbols-outlined animate-spin text-4xl">sync</span>
+          <span className="material-symbols-outlined animate-spin text-4xl">sync</span>
         </div>
       </Layout>
     );
@@ -89,9 +132,44 @@ function Dashboard() {
     <Layout>
       <div className="bg-slate-50 font-body-md text-slate-800 min-h-screen p-6">
         <div className="flex flex-col w-full gap-section-gap">
-          {/*  Top Row: Main Stats & Vis  */}
+
+          {/* ── Device Summary Bar ── */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* Online Devices */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-green-50 border border-green-100 flex items-center justify-center text-green-600">
+                <span className="material-symbols-outlined text-[20px]">wifi</span>
+              </div>
+              <div>
+                <div className="font-label-caps text-[10px] text-slate-400 font-bold uppercase tracking-wider">Online Devices</div>
+                <div className="text-2xl text-slate-900 font-bold">{deviceCounts.active}</div>
+              </div>
+            </div>
+            {/* Offline Devices */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-red-500">
+                <span className="material-symbols-outlined text-[20px]">wifi_off</span>
+              </div>
+              <div>
+                <div className="font-label-caps text-[10px] text-slate-400 font-bold uppercase tracking-wider">Offline Devices</div>
+                <div className="text-2xl text-slate-900 font-bold">{deviceCounts.offline}</div>
+              </div>
+            </div>
+            {/* Total Devices */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#35259B]">
+                <span className="material-symbols-outlined text-[20px]">devices</span>
+              </div>
+              <div>
+                <div className="font-label-caps text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Devices</div>
+                <div className="text-2xl text-slate-900 font-bold">{deviceCounts.total}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Top Row: Main Stats & Vis ── */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-            {/*  Left Col: Primary Energy Load  */}
+            {/* Left Col: Primary Energy Load */}
             <div className="lg:col-span-4 flex flex-col gap-4">
               <div className="bg-white border border-slate-200/80 rounded-2xl p-6 relative overflow-hidden group hover:shadow-lg transition-all duration-500">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 to-sky-50/20 opacity-50"></div>
@@ -102,7 +180,7 @@ function Dashboard() {
                         Current Load
                       </h2>
                       <p className="font-data-mono text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">
-                        System Grid Alpha
+                        {deviceCounts.total > 0 ? `${deviceCounts.total} device${deviceCounts.total !== 1 ? 's' : ''} registered` : 'No devices'}
                       </p>
                     </div>
                     <span className="material-symbols-outlined text-electric-blue animate-pulse">
@@ -110,82 +188,82 @@ function Dashboard() {
                     </span>
                   </div>
                   <div className="flex-1 flex flex-col items-center justify-center relative">
-                    {/*  SVG Gauge  */}
-                    <svg
-                      className="w-48 h-48 transform -rotate-90"
-                      viewBox="0 0 120 120"
-                    >
+                    {/* Dynamic SVG Gauge */}
+                    <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 120 120">
+                      <defs>
+                        <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#35259B" />
+                          <stop offset="100%" stopColor="#0EA5E9" />
+                        </linearGradient>
+                      </defs>
+                      {/* Track */}
                       <circle
-                        cx="60"
-                        cy="60"
-                        fill="none"
-                        r="54"
+                        cx="60" cy="60" fill="none" r="54"
                         stroke="#e2e8f0"
-                        strokeDasharray="251 339.29"
+                        strokeDasharray={`${GAUGE_ARC} ${GAUGE_TOTAL}`}
                         strokeWidth="8.5"
-                      ></circle>
+                      />
+                      {/* Fill - dynamic */}
                       <circle
-                        className="text-[#0EA5E9] drop-shadow-[0_0_15px_rgba(14,165,233,0.3)]"
-                        cx="60"
-                        cy="60"
-                        fill="none"
-                        r="54"
-                        stroke="currentColor"
-                        strokeDasharray="180 339.29"
+                        cx="60" cy="60" fill="none" r="54"
+                        stroke="url(#gaugeGrad)"
+                        strokeDasharray={`${gaugeFill} ${gaugeEmpty}`}
                         strokeLinecap="round"
                         strokeWidth="8.5"
-                      ></circle>
+                        className="drop-shadow-[0_0_15px_rgba(14,165,233,0.3)] transition-all duration-1000"
+                      />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <div className="font-display-lg text-display-lg bg-clip-text text-transparent bg-brand-gradient font-black">
-                        {insights?.totalPower ? (insights.totalPower / 1000).toFixed(1) : '0.0'}
-                        <span className="text-2xl ml-1 font-title-md text-slate-500 font-bold">
-                          kW
-                        </span>
+                        {currentKW.toFixed(1)}
+                        <span className="text-2xl ml-1 font-title-md text-slate-500 font-bold">kW</span>
                       </div>
-                      <div className="font-label-caps text-green-600 bg-green-50 border border-green-200/50 px-2.5 py-1 rounded-full text-[10px] mt-3 uppercase tracking-[0.1em] flex items-center gap-1 font-bold">
-                        <span className="material-symbols-outlined text-[14px]">
-                          arrow_drop_down
-                        </span>
-                        12% vs avg
-                      </div>
+                      {vsAvgPct !== null ? (
+                        <div className={`font-label-caps ${vsAvgPct >= 0 ? 'text-red-600 bg-red-50 border-red-200/50' : 'text-green-600 bg-green-50 border-green-200/50'} border px-2.5 py-1 rounded-full text-[10px] mt-3 uppercase tracking-[0.1em] flex items-center gap-1 font-bold`}>
+                          <span className="material-symbols-outlined text-[14px]">
+                            {vsAvgPct >= 0 ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                          {Math.abs(vsAvgPct)}% vs avg
+                        </div>
+                      ) : (
+                        <div className="font-label-caps text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full text-[10px] mt-3 uppercase tracking-[0.1em] font-bold">
+                          {insights?.totalEnergyKWh?.toFixed(2) || '0.00'} kWh today
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm hover:border-[#35259B]/20 transition-all">
-                  <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-2">
-                    Daily Peak
-                  </div>
+                  <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-2">Daily Peak</div>
                   <div className="font-title-md text-title-md text-slate-900 font-bold flex items-baseline gap-1">
-                    {insights?.highestPower ? (insights.highestPower / 1000).toFixed(1) : '0.0'}
-                    <span className="font-data-mono text-xs text-slate-500 font-bold">
-                      kW
-                    </span>
+                    {peakKW.toFixed(1)}
+                    <span className="font-data-mono text-xs text-slate-500 font-bold">kW</span>
+                  </div>
+                  <div className="mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    {insights?.ratePerKWh ? `₹${insights.ratePerKWh}/kWh` : ''}
                   </div>
                 </div>
                 <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm hover:border-[#0EA5E9]/20 transition-all flex flex-col justify-between">
                   <div>
-                    <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-1">
-                      Today's Cost
-                    </div>
+                    <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-1">Today's Cost</div>
                     <div className="font-title-md text-title-md text-slate-900 font-bold flex items-baseline gap-1">
-                      ${cost?.estimatedCost || '0.00'}
+                      ₹{Number(cost?.estimatedCost || 0).toFixed(2)}
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t border-slate-100">
-                    <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-1">
-                      Est. Monthly
-                    </div>
+                    <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-1">Est. Monthly</div>
                     <div className="font-title-md text-title-md text-[#0EA5E9] font-bold flex items-baseline gap-1 text-sm">
-                      ${((cost?.estimatedCost || 0) * 30).toFixed(2)}
+                      ₹{((cost?.estimatedCost || 0) * 30).toFixed(2)}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            {/*  Right Col: Visual Centerpiece & Chart  */}
+
+            {/* Right Col: Visual Centerpiece & Chart */}
             <div className="lg:col-span-8 flex flex-col gap-4">
               <div className="relative w-full h-64 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
                 <img
@@ -204,25 +282,28 @@ function Dashboard() {
                       Spatial Energy Mapping
                     </h3>
                   </div>
-                  <button className="px-4 py-2 bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-full backdrop-blur-md border border-white/40 transition-all font-label-caps text-label-caps uppercase flex items-center gap-2 font-bold">
-                    Optimize Grid
-                    <span className="material-symbols-outlined text-[16px]">
-                      auto_fix_high
-                    </span>
+                  <button
+                    onClick={() => navigate('/monitoring')}
+                    className="px-4 py-2 bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-full backdrop-blur-md border border-white/40 transition-all font-label-caps text-label-caps uppercase flex items-center gap-2 font-bold"
+                  >
+                    Live Monitor
+                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                   </button>
                 </div>
               </div>
-              {/*  Interactive Area Chart  */}
+
+              {/* Interactive Area Chart - real data */}
               <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex-1">
-                <Graph 
-                  data={chartHistory} 
-                  title="Consumption Profile (Live)" 
-                  colorHex="#0EA5E9" 
+                <Graph
+                  data={chartHistory}
+                  title="Consumption Profile (Live)"
+                  colorHex="#0EA5E9"
                 />
               </div>
             </div>
           </section>
-          {/*  Bottom Row: Active Devices  */}
+
+          {/* ── Bottom Row: Active Devices ── */}
           <section className="flex flex-col gap-6">
             <div className="flex justify-between items-end border-b border-slate-200 pb-4">
               <div>
@@ -235,64 +316,85 @@ function Dashboard() {
               </div>
               <Link to="/devices" className="text-[#0EA5E9] hover:underline font-label-caps text-label-caps uppercase flex items-center gap-1 transition-all">
                 View All{" "}
-                <span className="material-symbols-outlined text-[16px]">
-                  arrow_forward
-                </span>
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </Link>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               {devices.map((device, index) => {
-                const powerLimitKw = device.powerLimit ? (device.powerLimit / 1000) : 0;
-                
+                const energyThresholdKWh = device.powerLimit ? Number(device.powerLimit) : 0;
+                const currentWatts = device.currentPowerW || 0;
+                const energyKWh = device.energyKWh || 0;
+                const icon = deviceIcons[index % deviceIcons.length];
+                const usagePct = energyThresholdKWh > 0 ? Math.min((energyKWh / energyThresholdKWh) * 100, 100) : 0;
+
                 return (
-                <div key={device.deviceId} className="bg-white border border-slate-200/60 rounded-2xl p-5 hover:bg-slate-50 transition-all shadow-sm group">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${device.powerState === 'ON' ? 'bg-indigo-50 border-indigo-100 text-[#35259B] shadow-[0_0_15px_rgba(53,37,155,0.15)]' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
-                      <span className="material-symbols-outlined">
-                        {index % 3 === 0 ? 'mode_fan' : index % 3 === 1 ? 'ev_station' : 'kitchen'}
-                      </span>
+                  <div key={device.deviceId} className="bg-white border border-slate-200/60 rounded-2xl p-5 hover:bg-slate-50 transition-all shadow-sm group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${device.powerState === 'ON' ? 'bg-indigo-50 border-indigo-100 text-[#35259B] shadow-[0_0_15px_rgba(53,37,155,0.15)]' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+                        <span className="material-symbols-outlined">{icon}</span>
+                      </div>
+                      {/* Toggle */}
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          checked={device.powerState === 'ON'}
+                          onChange={() => toggleDevice(device.deviceId, device.powerState)}
+                          className="sr-only peer"
+                          type="checkbox"
+                        />
+                        <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#35259B] shadow-inner border border-slate-300"></div>
+                      </label>
                     </div>
-                    {/*  Custom Toggle  */}
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        checked={device.powerState === 'ON'}
-                        onChange={() => turnOffDevice(device.deviceId, device.powerState)}
-                        className="sr-only peer"
-                        type="checkbox"
-                      />
-                      <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#35259B] shadow-inner border border-slate-300"></div>
-                    </label>
-                  </div>
-                  <div>
-                    <h4 className="font-title-md text-title-md text-slate-900 font-bold">
-                      {device.name}
-                    </h4>
-                    <div className="flex items-baseline gap-2 mt-1">
+
+                    <h4 className="font-title-md text-title-md text-slate-900 font-bold truncate">{device.name}</h4>
+
+                    {/* Real-time watts */}
+                    <div className="flex items-baseline gap-1 mt-1 mb-3">
+                      <span className={`font-data-mono text-lg font-bold ${device.powerState === 'ON' ? 'text-[#35259B]' : 'text-slate-300'}`}>
+                        {device.powerState === 'ON' ? currentWatts.toFixed(0) : '0'}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-400">W</span>
+                    </div>
+
+                    {/* Energy + status row */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-label-caps text-[9px] text-slate-400 font-bold uppercase">Today</div>
+                        <div className="font-data-mono text-xs text-slate-600 font-bold">{energyKWh.toFixed(3)} kWh</div>
+                      </div>
                       {device.powerState === 'ON' ? (
-                        <>
-                          <span className="font-data-mono text-xs text-[#35259B] font-bold">
-                            Limit: {powerLimitKw.toFixed(1)} kW
-                          </span>
-                          <span className="font-label-caps text-[9px] px-2 py-0.5 rounded border border-green-200 text-green-600 bg-green-50 uppercase font-bold">
-                            Active
-                          </span>
-                        </>
+                        <span className="font-label-caps text-[9px] px-2 py-0.5 rounded border border-green-200 text-green-600 bg-green-50 uppercase font-bold">
+                          Active
+                        </span>
                       ) : (
-                        <>
-                           <span className="font-data-mono text-xs text-slate-400 font-bold">
-                            Limit: {powerLimitKw.toFixed(1)} kW
-                          </span>
-                          <span className="font-label-caps text-[9px] px-2 py-0.5 rounded border border-slate-200 text-slate-400 bg-slate-50 uppercase font-bold">
-                            Standby
-                          </span>
-                        </>
+                        <span className="font-label-caps text-[9px] px-2 py-0.5 rounded border border-slate-200 text-slate-400 bg-slate-50 uppercase font-bold">
+                          Standby
+                        </span>
                       )}
                     </div>
+
+                    {/* Energy threshold bar */}
+                    {energyThresholdKWh > 0 && (
+                      <div className="mt-3">
+                        <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
+                          <span>THRESHOLD</span>
+                          <span className={usagePct >= 100 ? "text-red-500 font-bold" : ""}>
+                            {energyKWh.toFixed(2)} / {energyThresholdKWh} kWh ({usagePct.toFixed(0)}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${usagePct >= 100 ? 'bg-red-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-[#35259B]'}`}
+                            style={{ width: `${usagePct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )})}
-              
-              {/*  Add Device Card  */}
+                );
+              })}
+
+              {/* Add Device Card */}
               <Link to="/devices" className="bg-white border border-slate-200 border-dashed rounded-2xl p-5 hover:bg-slate-50 transition-colors group flex flex-col justify-center items-center cursor-pointer shadow-sm">
                 <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-[#0EA5E9] group-hover:border-[#0EA5E9]/50 transition-all mb-3">
                   <span className="material-symbols-outlined">add</span>
