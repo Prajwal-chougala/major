@@ -19,6 +19,8 @@ function Dashboard() {
   const [devices, setDevices] = useState([]);
   const [deviceCounts, setDeviceCounts] = useState({ active: 0, offline: 0, total: 0, hardware: 0 });
   const [loading, setLoading] = useState(true);
+  const [editingThresholdDevice, setEditingThresholdDevice] = useState(null);
+  const [thresholdInput, setThresholdInput] = useState('');
 
   useEffect(() => {
     // Initial load: fetch real chart history first
@@ -29,6 +31,7 @@ function Dashboard() {
           const chartData = chartRes.data.data.map(item => ({
             timestamp: new Date(item.timestamp).getTime(),
             power: (item.power || 0) * 1000, // convert kW → W for the Graph component
+            energy: Number(item.energyKWh || 0),
           }));
           setChartHistory(chartData.slice(-30));
         }
@@ -39,7 +42,7 @@ function Dashboard() {
 
     initChart();
     fetchAll();
-    const interval = setInterval(fetchAll, 15000);
+    const interval = setInterval(fetchAll, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -69,12 +72,14 @@ function Dashboard() {
 
       setDevices(data?.devices || []);
 
-      // Append live point to chart
+      // Append live point to chart (power in W, continuous energy in kWh)
       const now = Date.now();
       const latestPowerW = (data?.currentPowerKW || 0) * 1000;
+      const latestEnergyKWh = data?.totalEnergyKWh || 0;
       setChartHistory(prev => {
-        if (prev.length === 0) return [{ timestamp: now, power: latestPowerW }];
-        const newHistory = [...prev, { timestamp: now, power: latestPowerW }];
+        const point = { timestamp: now, power: latestPowerW, energy: latestEnergyKWh };
+        if (prev.length === 0) return [point];
+        const newHistory = [...prev, point];
         if (newHistory.length > 60) newHistory.shift();
         return newHistory;
       });
@@ -83,6 +88,20 @@ function Dashboard() {
     } catch (error) {
       console.log(error);
       setLoading(false);
+    }
+  };
+
+  const handleSaveThreshold = async (e) => {
+    e.preventDefault();
+    if (!editingThresholdDevice) return;
+    try {
+      const val = Number(thresholdInput);
+      await API.put(`/devices/${editingThresholdDevice.deviceId}`, { powerLimit: val });
+      setDevices(prev => prev.map(d => d.deviceId === editingThresholdDevice.deviceId ? { ...d, powerLimit: val } : d));
+      setEditingThresholdDevice(null);
+    } catch (err) {
+      console.error("Failed to update threshold", err);
+      alert("Failed to update energy threshold.");
     }
   };
 
@@ -374,22 +393,50 @@ function Dashboard() {
                     </div>
 
                     {/* Energy threshold bar */}
-                    {energyThresholdKWh > 0 && (
-                      <div className="mt-3">
-                        <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
-                          <span>THRESHOLD</span>
+                    <div className="mt-3 pt-2 border-t border-slate-100">
+                      <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mb-1">
+                        <span className="flex items-center gap-1">
+                          THRESHOLD
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingThresholdDevice(device);
+                              setThresholdInput(device.powerLimit || 2.5);
+                            }}
+                            className="text-slate-400 hover:text-[#0EA5E9] transition-colors p-0.5 rounded hover:bg-slate-100"
+                            title="Edit Energy Threshold"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">tune</span>
+                          </button>
+                        </span>
+                        {energyThresholdKWh > 0 ? (
                           <span className={usagePct >= 100 ? "text-red-500 font-bold" : ""}>
-                            {energyKWh.toFixed(2)} / {energyThresholdKWh} kWh ({usagePct.toFixed(0)}%)
+                            {energyKWh.toFixed(3)} / {energyThresholdKWh} kWh ({usagePct.toFixed(0)}%)
                           </span>
-                        </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingThresholdDevice(device);
+                              setThresholdInput(2.5);
+                            }}
+                            className="text-[#0EA5E9] hover:underline cursor-pointer"
+                          >
+                            Set Limit
+                          </button>
+                        )}
+                      </div>
+                      {energyThresholdKWh > 0 && (
                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${usagePct >= 100 ? 'bg-red-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-[#35259B]'}`}
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              usagePct >= 100 ? 'bg-red-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-[#35259B]'
+                            }`}
                             style={{ width: `${usagePct}%` }}
                           />
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -405,6 +452,49 @@ function Dashboard() {
               </Link>
             </div>
           </section>
+
+          {editingThresholdDevice && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-slate-200 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Set Energy Threshold</h2>
+                    <p className="text-xs text-slate-400 mt-1">{editingThresholdDevice.name}</p>
+                  </div>
+                  <button onClick={() => setEditingThresholdDevice(null)} className="text-slate-400 hover:text-slate-700 transition-colors">
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <form onSubmit={handleSaveThreshold} className="flex flex-col gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">DAILY ENERGY LIMIT (kWh)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      required
+                      value={thresholdInput}
+                      onChange={e => setThresholdInput(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all font-mono"
+                      placeholder="e.g. 0.05 or 1.5"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-2">
+                      When this appliance reaches this threshold, the server automatically commands the relay to turn OFF and sends an SMS to your registered phone.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-4 mt-4 pt-6 border-t border-slate-100">
+                    <button type="button" onClick={() => setEditingThresholdDevice(null)} className="px-6 py-3 rounded-full text-slate-400 font-bold tracking-wider hover:bg-slate-100 transition-colors text-xs">
+                      CANCEL
+                    </button>
+                    <button type="submit" className="px-8 py-3 rounded-full bg-gradient-to-r from-[#35259B] to-[#0EA5E9] text-white font-bold tracking-wider hover:opacity-90 transition-all shadow-md shadow-sky-500/10 text-xs">
+                      SAVE THRESHOLD
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

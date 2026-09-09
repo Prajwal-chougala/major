@@ -7,7 +7,7 @@ const { createReadingAlerts } = require("../services/alertService");
 const ingestReading = async (req, res) => {
   try {
     const device = req.device; // set by apiKeyMiddleware
-    let { voltage, current, power, timestamp } = req.body;
+    let { voltage, current, power, energy, frequency, powerFactor, timestamp } = req.body;
 
     // Support flexible hardware payloads:
     // If power is provided without voltage/current, infer them.
@@ -55,15 +55,20 @@ const ingestReading = async (req, res) => {
       .sort({ timestamp: -1 })
       .lean();
 
+    const pzemEnergyKWh = energy !== undefined && Number.isFinite(Number(energy)) ? Number(energy) : 0;
+
     const reading = await Reading.create({
       deviceId: device.deviceId,
       voltage,
       current,
       power,
+      energy: pzemEnergyKWh,
+      frequency: frequency !== undefined && Number.isFinite(Number(frequency)) ? Number(frequency) : null,
+      powerFactor: powerFactor !== undefined && Number.isFinite(Number(powerFactor)) ? Number(powerFactor) : null,
       timestamp: now,
     });
 
-    let energyKWh = 0;
+    let deltaEnergyKWh = 0;
     if (previousReading) {
       const previousTime = new Date(previousReading.timestamp).getTime();
       const currentTime = now.getTime();
@@ -72,7 +77,7 @@ const ingestReading = async (req, res) => {
       if (hours > 0 && hours < 24) {
         // Trapezoidal integration: average power (W) * hours / 1000 = kWh
         const averagePowerW = (Number(previousReading.power) + power) / 2;
-        energyKWh = (averagePowerW * hours) / 1000;
+        deltaEnergyKWh = (averagePowerW * hours) / 1000;
       }
     }
 
@@ -83,7 +88,9 @@ const ingestReading = async (req, res) => {
       device.autoOffDueToLimit = false;
     }
 
-    device.dailyEnergyKWh = Number(((device.dailyEnergyKWh || 0) + energyKWh).toFixed(4));
+    // Combine continuous trapezoidal integration with PZEM hardware counter
+    const currentAccumulated = Number(((device.dailyEnergyKWh || 0) + deltaEnergyKWh).toFixed(4));
+    device.dailyEnergyKWh = Number(Math.max(currentAccumulated, pzemEnergyKWh).toFixed(4));
 
     await device.save();
 

@@ -27,6 +27,22 @@ const readingSchema = new mongoose.Schema(
       min: 0,
     },
 
+    energy: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    frequency: {
+      type: Number,
+      default: null,
+    },
+
+    powerFactor: {
+      type: Number,
+      default: null,
+    },
+
     timestamp: {
       type: Date,
       required: true,

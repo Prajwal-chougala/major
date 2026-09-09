@@ -89,8 +89,12 @@ const getPowerChart = async (req, res) => {
                 0) / 1000
             ).toFixed(3)
           ),
+          powerW: Number(reading.power) || 0,
+          energyKWh: Number(reading.energy) || 0,
         };
       });
+
+    const totalEnergy = devices.reduce((sum, d) => sum + (Number(d.dailyEnergyKWh) || 0), 0);
 
     return res.status(200).json({
       currentPowerKW: Number(
@@ -104,6 +108,8 @@ const getPowerChart = async (req, res) => {
       averagePowerKW: Number(
         (averagePowerW / 1000).toFixed(3)
       ),
+
+      totalEnergyKWh: Number(totalEnergy.toFixed(4)),
 
       data,
     });
