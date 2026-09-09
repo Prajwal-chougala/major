@@ -6,7 +6,13 @@ function Devices() {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newDevice, setNewDevice] = useState({ name: '', powerLimit: 1000, autoOffMinutes: 5 });
+  const [newDevice, setNewDevice] = useState({
+    name: "",
+    powerLimit: 1000,
+    autoOffMinutes: 5,
+    alertPhone: "",
+  });
+  const [testingAlertId, setTestingAlertId] = useState(null);
 
   useEffect(() => {
     fetchDevices();
@@ -23,19 +29,44 @@ function Devices() {
     }
   };
 
+  const sendTestAlert = async (deviceId) => {
+    try {
+      setTestingAlertId(deviceId);
+      const res = await API.post(`/devices/${deviceId}/test-alert`);
+      alert(
+        res.data.message ||
+          "Real-time WhatsApp alert sent! Please check your WhatsApp."
+      );
+    } catch (error) {
+      console.error("Error sending test alert:", error);
+      alert(
+        error.response?.data?.message ||
+          "Failed to dispatch test alert. Check server logs."
+      );
+    } finally {
+      setTestingAlertId(null);
+    }
+  };
+
   const toggleDevice = async (id, currentState) => {
     try {
       // Optimistic UI update
-      setDevices(prevDevices => prevDevices.map(d => 
-        d.deviceId === id 
-          ? { ...d, powerState: currentState === 'ON' ? 'OFF' : 'ON' } 
-          : d
-      ));
+      setDevices((prevDevices) =>
+        prevDevices.map((d) =>
+          d.deviceId === id
+            ? { ...d, powerState: currentState === "ON" ? "OFF" : "ON" }
+            : d
+        )
+      );
 
       if (currentState === "ON") {
-        await API.post(`/devices/${id}/turn-off`).catch(e => console.log('API Failed but updating UI locally'));
+        await API.post(`/devices/${id}/turn-off`).catch((e) =>
+          console.log("API Failed but updating UI locally")
+        );
       } else {
-        await API.post(`/devices/${id}/turn-on`).catch(e => console.log('API Failed but updating UI locally'));
+        await API.post(`/devices/${id}/turn-on`).catch((e) =>
+          console.log("API Failed but updating UI locally")
+        );
       }
     } catch (error) {
       console.error("Error toggling device:", error);
@@ -45,18 +76,33 @@ function Devices() {
   const deleteDevice = async (id) => {
     if (!window.confirm("Are you sure you want to delete this device?")) return;
     try {
-      await API.delete(`/devices/${id}`).catch(e => console.log('API Failed but updating UI locally'));
-      setDevices(devices.filter(d => d.deviceId !== id));
+      await API.delete(`/devices/${id}`).catch((e) =>
+        console.log("API Failed but updating UI locally")
+      );
+      setDevices(devices.filter((d) => d.deviceId !== id));
     } catch (error) {
       console.error("Error deleting device:", error);
     }
   };
 
   const regenerateKey = async (id) => {
-    if (!window.confirm("Regenerating the API key will immediately invalidate the old one. Continue?")) return;
+    if (
+      !window.confirm(
+        "Regenerating the API key will immediately invalidate the old one. Continue?"
+      )
+    )
+      return;
     try {
-      const res = await API.post(`/devices/${id}/regenerate-key`).catch(e => ({ data: { apiKey: 'new-mock-key-' + Date.now() } }));
-      setDevices(devices.map(d => d.deviceId === id ? { ...d, apiKey: res.data.apiKey } : d));
+      const res = await API.post(`/devices/${id}/regenerate-key`).catch(
+        (e) => ({
+          data: { apiKey: "new-mock-key-" + Date.now() },
+        })
+      );
+      setDevices(
+        devices.map((d) =>
+          d.deviceId === id ? { ...d, apiKey: res.data.apiKey } : d
+        )
+      );
     } catch (error) {
       console.error("Error regenerating key:", error);
     }
@@ -67,12 +113,18 @@ function Devices() {
     try {
       const payload = {
         ...newDevice,
-        deviceId: 'dev-' + Date.now() + '-' + Math.floor(Math.random() * 1000)
+        deviceId:
+          "dev-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       };
-      const res = await API.post('/devices', payload);
+      const res = await API.post("/devices", payload);
       setDevices([...devices, res.data.device]);
       setShowAddModal(false);
-      setNewDevice({ name: '', powerLimit: 1000, autoOffMinutes: 5 });
+      setNewDevice({
+        name: "",
+        powerLimit: 1000,
+        autoOffMinutes: 5,
+        alertPhone: "",
+      });
     } catch (error) {
       console.error("Error adding device:", error);
       alert("Failed to add device. Please try again.");
@@ -134,6 +186,22 @@ function Devices() {
                     <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">AUTO-OFF MINUTES</label>
                     <input type="number" min="0" value={newDevice.autoOffMinutes} onChange={e => setNewDevice({...newDevice, autoOffMinutes: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all" />
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider flex items-center justify-between">
+                      <span>ALERT PHONE / WHATSAPP NUMBER</span>
+                      <span className="text-[10px] text-emerald-600 font-semibold">⚡ Instant Alerts</span>
+                    </label>
+                    <input 
+                      type="tel" 
+                      value={newDevice.alertPhone} 
+                      onChange={e => setNewDevice({...newDevice, alertPhone: e.target.value})} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all placeholder:text-slate-400" 
+                      placeholder="+91 98803 31429 (or leave blank to use your profile number)" 
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1.5">
+                      The WhatsApp number that will receive real-time power spike & cut-off warnings for this device.
+                    </p>
+                  </div>
                   <div className="flex justify-end gap-4 mt-4 pt-6 border-t border-slate-100">
                     <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 rounded-full text-slate-400 font-bold tracking-wider hover:bg-slate-100 transition-colors text-xs">CANCEL</button>
                     <button type="submit" className="px-8 py-3 rounded-full bg-gradient-to-r from-[#35259B] to-[#0EA5E9] text-white font-bold tracking-wider hover:opacity-90 transition-all shadow-md shadow-sky-500/10 text-xs">REGISTER</button>
@@ -162,10 +230,16 @@ function Devices() {
                           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                             {device.name}
                           </h2>
-                          <p className="font-data-mono text-xs text-slate-400 flex items-center gap-2 mt-1">
+                          <div className="font-data-mono text-xs text-slate-400 flex flex-wrap items-center gap-2 mt-1">
                             <span className={`w-2 h-2 rounded-full ${device.powerState === 'ON' ? 'bg-[#0EA5E9] animate-pulse shadow-[0_0_8px_rgba(14,165,233,0.8)]' : 'bg-slate-200'}`}></span>
-                            API Key: {device.apiKey || 'Hidden'}
-                          </p>
+                            <span>Key: {device.apiKey ? `${device.apiKey.slice(0, 8)}...` : 'Hidden'}</span>
+                            {device.alertPhone && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px] flex items-center gap-1 border border-emerald-200">
+                                <span className="material-symbols-outlined text-[13px]">chat</span>
+                                {device.alertPhone}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex gap-3">
@@ -205,8 +279,19 @@ function Devices() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between border-t border-slate-100 pt-6 relative z-10">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-6 gap-3 relative z-10">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button 
+                          onClick={() => sendTestAlert(device.deviceId)} 
+                          disabled={testingAlertId === device.deviceId}
+                          className="px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 font-label-caps text-[10px] font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                          title="Trigger a real-time WhatsApp alert test to this device"
+                        >
+                          <span className="material-symbols-outlined text-sm">
+                            {testingAlertId === device.deviceId ? 'sync' : 'notification_important'}
+                          </span>{" "}
+                          {testingAlertId === device.deviceId ? 'SENDING...' : 'TEST REALTIME ALERT'}
+                        </button>
                         <button onClick={() => regenerateKey(device.deviceId)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 font-label-caps text-[10px] font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors flex items-center gap-1.5">
                           <span className="material-symbols-outlined text-sm">
                             refresh

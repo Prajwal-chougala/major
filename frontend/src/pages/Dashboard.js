@@ -171,15 +171,15 @@ function Dashboard() {
                       Today's Cost
                     </div>
                     <div className="font-title-md text-title-md text-slate-900 font-bold flex items-baseline gap-1">
-                      ${cost?.estimatedCost || '0.00'}
+                      ₹{cost?.estimatedCost || '0.00'}
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t border-slate-100">
                     <div className="font-label-caps text-slate-400 font-bold text-[10px] uppercase mb-1">
-                      Est. Monthly
+                      Est. Monthly (Indian Tariff)
                     </div>
                     <div className="font-title-md text-title-md text-[#0EA5E9] font-bold flex items-baseline gap-1 text-sm">
-                      ${((cost?.estimatedCost || 0) * 30).toFixed(2)}
+                      ₹{((cost?.estimatedCost || 0) * 30).toFixed(2)}
                     </div>
                   </div>
                 </div>

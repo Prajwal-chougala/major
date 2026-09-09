@@ -90,6 +90,14 @@ const deviceSchema = new mongoose.Schema(
       enum: ["ON", "OFF"],
       default: "ON",
     },
+
+    // Specific phone/WhatsApp number designated to receive alerts for this device.
+    // If not set, falls back to the account owner's mobile number.
+    alertPhone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
   },
   {
     timestamps: true,

@@ -1,5 +1,6 @@
 const Device = require("../models/Device");
 const Reading = require("../models/Reading");
+const { calculateIndianTariff } = require("../utils/tariff");
 
 const RATE_PER_KWH =
   Number(process.env.RATE_PER_KWH) || 8;
@@ -16,11 +17,17 @@ const getDashboard = async (req, res) => {
     if (devices.length === 0) {
       return res.status(200).json({
         totalEnergyKWh: 0,
+        totalUnits: 0,
         currentPowerKW: 0,
         activeDevices: 0,
         totalDevices: 0,
         offlineDevices: 0,
         estimatedCost: 0,
+        projectedMonthlyCost: 0,
+        ratePerKWh: 7.20,
+        ratePerUnit: 7.20,
+        currency: "₹",
+        currencyCode: "INR",
         peakPowerKW: 0,
         devices: [],
       });
@@ -168,11 +175,14 @@ const getDashboard = async (req, res) => {
     const offlineDevices =
       devices.length - activeDevices;
 
-    const estimatedCost =
-      totalEnergyKWh * RATE_PER_KWH;
+    const tariff = calculateIndianTariff(totalEnergyKWh, "daily");
 
     return res.status(200).json({
       totalEnergyKWh: Number(
+        totalEnergyKWh.toFixed(4)
+      ),
+
+      totalUnits: Number(
         totalEnergyKWh.toFixed(4)
       ),
 
@@ -186,11 +196,17 @@ const getDashboard = async (req, res) => {
 
       offlineDevices,
 
-      estimatedCost: Number(
-        estimatedCost.toFixed(2)
-      ),
+      estimatedCost: tariff.dailyCost,
 
-      ratePerKWh: RATE_PER_KWH,
+      projectedMonthlyCost: tariff.projectedMonthlyCost,
+
+      ratePerKWh: tariff.effectiveRatePerUnit,
+
+      ratePerUnit: tariff.effectiveRatePerUnit,
+
+      currency: "₹",
+
+      currencyCode: "INR",
 
       peakPowerKW: Number(
         (peakPowerW / 1000).toFixed(3)

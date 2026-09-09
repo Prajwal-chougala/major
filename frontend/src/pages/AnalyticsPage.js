@@ -215,12 +215,12 @@ function AnalyticsPage() {
                   </div>
                   <div className="flex justify-between items-end border-t border-slate-100 pt-4 mt-2">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">ENERGY</p>
-                      <p className="font-mono text-xl font-extrabold text-slate-800">{device.energyKWh.toFixed(2)} <span className="text-xs font-semibold text-slate-400">kWh</span></p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">ENERGY (UNITS)</p>
+                      <p className="font-mono text-xl font-extrabold text-slate-800">{device.energyKWh.toFixed(2)} <span className="text-xs font-semibold text-slate-400">Units</span></p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">COST</p>
-                      <p className="font-mono text-xl font-extrabold text-[#35259B]">${device.cost.toFixed(2)}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">COST (INR)</p>
+                      <p className="font-mono text-xl font-extrabold text-[#35259B]">₹{device.cost.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -309,12 +309,12 @@ function AnalyticsPage() {
                   <span className="font-mono font-bold text-slate-900">{selectedDevice.energyKWh.toFixed(3)} <span className="text-xs text-slate-400">kWh</span></span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-slate-500">Estimated Cost</span>
-                  <span className="font-mono font-bold text-green-600">${selectedDevice.cost.toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-slate-500">Estimated Cost (Today)</span>
+                  <span className="font-mono font-bold text-green-600">₹{selectedDevice.cost.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 mt-2 border-t border-slate-100 border-dashed">
-                  <span className="text-sm font-semibold text-slate-500">Projected Monthly</span>
-                  <span className="font-mono font-bold text-[#35259B]">${(selectedDevice.cost * 30).toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-slate-500">Projected Monthly (Indian Tariff)</span>
+                  <span className="font-mono font-bold text-[#35259B]">₹{(selectedDevice.cost * 30).toFixed(2)}</span>
                 </div>
               </div>
             </div>

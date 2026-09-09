@@ -249,7 +249,7 @@ function LandingPage() {
                     MONTHLY SAVINGS
                   </span>
                   <span className="text-3xl font-extrabold text-[#35259B] drop-shadow-[0_0_12px_rgba(53,37,155,0.1)]">
-                    $342.50
+                    ₹2,850
                   </span>
                 </div>
                 

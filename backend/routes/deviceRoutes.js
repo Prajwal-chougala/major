@@ -11,6 +11,7 @@ const {
   turnOnDevice,
   turnOffDevice,
   regenerateApiKey,
+  testDeviceAlert,
 } = require("../controllers/deviceController");
 
 const authenticate = require("../middleware/authMiddleware");
@@ -37,6 +38,9 @@ router.post("/:deviceId/turn-off", authenticate, turnOffDevice);
 
 // Regenerate a device's hardware API key
 router.post("/:deviceId/regenerate-key", authenticate, regenerateApiKey);
+
+// Trigger a real-time test alert to this device's configured WhatsApp number
+router.post("/:deviceId/test-alert", authenticate, testDeviceAlert);
 
 
 module.exports = router;

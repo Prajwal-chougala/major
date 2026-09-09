@@ -4,7 +4,7 @@ const { clearAutoOffTimer } = require("../services/alertService");
 // Create a new device
 const createDevice = async (req, res) => {
   try {
-    const { deviceId, name, location, powerLimit, autoOffMinutes } = req.body;
+    const { deviceId, name, location, powerLimit, autoOffMinutes, alertPhone } = req.body;
 
     if (!deviceId || !name) {
       return res.status(400).json({
@@ -31,6 +31,7 @@ const createDevice = async (req, res) => {
       powerLimit: powerLimit !== undefined ? Number(powerLimit) : null,
       autoOffMinutes:
         autoOffMinutes !== undefined ? Number(autoOffMinutes) : null,
+      alertPhone: alertPhone ? alertPhone.trim() : "",
     });
 
     return res.status(201).json({
@@ -103,7 +104,7 @@ const getDeviceById = async (req, res) => {
 const updateDevice = async (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { name, location, powerLimit, autoOffMinutes } = req.body;
+    const { name, location, powerLimit, autoOffMinutes, alertPhone } = req.body;
 
     const device = await Device.findOne({
       deviceId,
@@ -131,6 +132,10 @@ const updateDevice = async (req, res) => {
     if (autoOffMinutes !== undefined) {
       device.autoOffMinutes =
         autoOffMinutes === null ? null : Number(autoOffMinutes);
+    }
+
+    if (alertPhone !== undefined) {
+      device.alertPhone = alertPhone ? alertPhone.trim() : "";
     }
 
     await device.save();
@@ -283,6 +288,59 @@ const regenerateApiKey = async (req, res) => {
   }
 };
 
+// Real-time alert sending machine: test alert trigger for a specific device
+const testDeviceAlert = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    const device = await Device.findOne({
+      deviceId,
+      owner: req.user.userId,
+    });
+
+    if (!device) {
+      return res.status(404).json({
+        message: "Device not found.",
+      });
+    }
+
+    const User = require("../models/User");
+    const user = await User.findById(req.user.userId);
+    const targetPhone =
+      device.alertPhone || (user ? (user.mobile || user.mobileNumber) : null);
+
+    if (!targetPhone) {
+      return res.status(400).json({
+        message:
+          "No alert phone number set on this device or your user profile.",
+      });
+    }
+
+    const { sendWhatsAppAlert } = require("../utils/notify");
+    const testMsg =
+      `⚡ *WattWise Real-Time Alert Test!*\n\n` +
+      `Device: *${device.name}*\n` +
+      `Location: *${device.location || "Default"}*\n` +
+      `Current Status: *${device.status.toUpperCase()}* (${device.powerState})\n` +
+      `Daily Energy Limit: *${device.powerLimit || 1000} kWh*\n` +
+      `Configured Alert Recipient: *${targetPhone}*\n\n` +
+      `✅ Your real-time alert sending system is online and functioning!`;
+
+    const result = await sendWhatsAppAlert(targetPhone, testMsg);
+
+    return res.status(200).json({
+      message: `Test WhatsApp alert dispatched to ${targetPhone}.`,
+      targetPhone,
+      result,
+    });
+  } catch (error) {
+    console.error("Test device alert error:", error);
+
+    return res.status(500).json({
+      message: "Unable to send test alert.",
+    });
+  }
+};
 
 module.exports = {
   createDevice,
@@ -293,4 +351,5 @@ module.exports = {
   turnOnDevice,
   turnOffDevice,
   regenerateApiKey,
+  testDeviceAlert,
 };

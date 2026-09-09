@@ -1,7 +1,7 @@
 const Alert = require("../models/Alert");
 const Device = require("../models/Device");
 const User = require("../models/User");
-const { sendSmsAlert } = require("../utils/notify");
+const { sendSmsAlert, sendWhatsAppAlert } = require("../utils/notify");
 
 const POWER_WARNING_KW = 1.0;
 const POWER_DANGER_KW = 2.0;
@@ -24,7 +24,7 @@ const clearAutoOffTimer = (deviceObjectId) => {
 };
 
 // If the device has a user-configured powerLimit and its dailyEnergyKWh exceeds
-// it: create a critical alert, send an SMS, and schedule an auto turn-off
+// it: create a critical alert, send an SMS & WhatsApp, and schedule an auto turn-off
 // unless the user turns the device off manually first.
 const checkPowerLimit = async ({ reading, device }) => {
   if (!device.powerLimit || device.dailyEnergyKWh <= device.powerLimit) {
@@ -54,13 +54,25 @@ const checkPowerLimit = async ({ reading, device }) => {
   });
 
   const user = await User.findById(device.owner);
+  const targetMobile =
+    device.alertPhone ||
+    (user ? (user.mobile || user.mobileNumber) : null);
 
   sendSmsAlert(
-    user ? user.mobile : null,
+    targetMobile,
     `WattWise ALERT: "${device.name}" has used ${device.dailyEnergyKWh.toFixed(
       2
     )} kWh today, above its ${device.powerLimit} kWh limit. It will auto turn OFF in ${minutes} min.`
   );
+
+  const whatsAppMsg =
+    `⚠️ *WattWise Energy Limit Warning!*\n\n` +
+    `Device: *${device.name}*\n` +
+    `Consumed Today: *${device.dailyEnergyKWh.toFixed(2)} kWh*\n` +
+    `Daily Budget Limit: *${device.powerLimit} kWh*\n\n` +
+    `⏱️ *Auto turn-OFF in ${minutes} minutes* unless turned off manually from your dashboard.`;
+
+  sendWhatsAppAlert(targetMobile, whatsAppMsg);
 
   const timeoutId = setTimeout(async () => {
     try {
@@ -87,11 +99,20 @@ const checkPowerLimit = async ({ reading, device }) => {
         });
 
         const u = await User.findById(dev.owner);
+        const offMobile =
+          dev.alertPhone ||
+          (u ? (u.mobile || u.mobileNumber) : null);
 
         sendSmsAlert(
-          u ? u.mobile : null,
+          offMobile,
           `WattWise: "${dev.name}" was automatically turned OFF to save energy after exceeding its daily budget.`
         );
+
+        const whatsAppOffMsg =
+          `🔌 *WattWise Safety Action*\n\n` +
+          `Device: *${dev.name}* was *automatically turned OFF* to prevent exceeding your daily energy budget.`;
+
+        sendWhatsAppAlert(offMobile, whatsAppOffMsg);
       }
     } catch (error) {
       console.error("Auto-off timer error:", error);
@@ -153,10 +174,24 @@ const createReadingAlerts = async ({
           severity,
           isRead: false,
         });
+
+        // Dispatch an instant WhatsApp warning for dangerous critical load spikes
+        if (type === "danger") {
+          const user = await User.findById(device.owner);
+          const targetMobile =
+            device.alertPhone ||
+            (user ? (user.mobile || user.mobileNumber) : null);
+          const spikeMsg =
+            `🚨 *WattWise Critical Load Alert!*\n\n` +
+            `Device: *${device.name}*\n` +
+            `Current Load: *${Number(reading.power).toFixed(1)} W* (Above 2 kW critical limit)\n` +
+            `Time: *${new Date().toLocaleTimeString()}*`;
+          sendWhatsAppAlert(targetMobile, spikeMsg);
+        }
       }
     }
 
-    // Per-device configured limit: alert + SMS + auto-off countdown.
+    // Per-device configured limit: alert + SMS + WhatsApp + auto-off countdown.
     await checkPowerLimit({ reading, device });
   } catch (error) {
     // Alert creation must not cause the
