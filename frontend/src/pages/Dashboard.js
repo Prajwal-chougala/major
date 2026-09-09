@@ -470,13 +470,13 @@ function Dashboard() {
                     <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">DAILY ENERGY LIMIT (kWh)</label>
                     <input
                       type="number"
-                      step="0.01"
-                      min="0.01"
+                      step="any"
+                      min="0"
                       required
                       value={thresholdInput}
                       onChange={e => setThresholdInput(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all font-mono"
-                      placeholder="e.g. 0.05 or 1.5"
+                      placeholder="e.g. 0.02 or 1.5"
                     />
                     <p className="text-[11px] text-slate-400 mt-2">
                       When this appliance reaches this threshold, the server automatically commands the relay to turn OFF and sends an SMS to your registered phone.

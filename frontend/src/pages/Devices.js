@@ -148,7 +148,7 @@ function Devices() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">DAILY ENERGY THRESHOLD (kWh)</label>
-                    <input type="number" step="0.1" min="0.01" required value={newDevice.powerLimit} onChange={e => setNewDevice({...newDevice, powerLimit: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all" placeholder="e.g. 2.5" />
+                    <input type="number" step="any" min="0" required value={newDevice.powerLimit} onChange={e => setNewDevice({...newDevice, powerLimit: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all font-mono" placeholder="e.g. 0.02 or 2.5" />
                   </div>
 
                   <div className="flex justify-end gap-4 mt-4 pt-6 border-t border-slate-100">
@@ -175,7 +175,7 @@ function Devices() {
                 <form onSubmit={updateThreshold} className="flex flex-col gap-6">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">DAILY ENERGY LIMIT (kWh)</label>
-                    <input type="number" step="0.1" min="0.01" required value={editThreshold} onChange={e => setEditThreshold(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all" placeholder="e.g. 2.5" />
+                    <input type="number" step="any" min="0" required value={editThreshold} onChange={e => setEditThreshold(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-none transition-all font-mono" placeholder="e.g. 0.02 or 2.5" />
                     <p className="text-[11px] text-slate-400 mt-2">When energy consumption hits this threshold, the device automatically turns off and an SMS is sent to your registered number.</p>
                   </div>
 
