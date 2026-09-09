@@ -22,11 +22,16 @@ const clearAutoOffTimer = (deviceIdentifier) => {
 // reaches or exceeds it: IMMEDIATELY turn off the device, create a critical alert, and send SMS + email.
 const checkEnergyLimit = async ({ reading, device }) => {
   const thresholdKWh = Number(device.powerLimit);
-  const currentEnergyKWh = Number(device.dailyEnergyKWh) || 0;
+  const readingEnergy = reading && Number.isFinite(Number(reading.energy)) ? Number(reading.energy) : 0;
+  const currentEnergyKWh = Math.max(Number(device.dailyEnergyKWh) || 0, readingEnergy);
 
-  if (!thresholdKWh || thresholdKWh <= 0 || currentEnergyKWh < thresholdKWh) {
+  // Trigger if current energy consumption has reached or exceeded the threshold (with 0.0005 kWh rounding margin)
+  if (!thresholdKWh || thresholdKWh <= 0 || (currentEnergyKWh + 0.0005) < thresholdKWh) {
     return;
   }
+
+  // Ensure daily energy reflects at least the current energy reading
+  device.dailyEnergyKWh = Number(Math.max(Number(device.dailyEnergyKWh) || 0, currentEnergyKWh).toFixed(4));
 
   const key = device._id.toString();
 

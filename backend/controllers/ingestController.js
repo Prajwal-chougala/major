@@ -43,6 +43,7 @@ const ingestReading = async (req, res) => {
         message: "Device is OFF, reading ignored.",
         powerState: "OFF",
         dailyEnergyKWh: device.dailyEnergyKWh || 0,
+        autoOffDueToLimit: !!device.autoOffDueToLimit,
       });
     }
 
@@ -101,6 +102,7 @@ const ingestReading = async (req, res) => {
       message: "Reading stored successfully.",
       powerState: device.powerState,
       dailyEnergyKWh: device.dailyEnergyKWh,
+      autoOffDueToLimit: !!device.autoOffDueToLimit,
       reading,
     });
   } catch (error) {
