@@ -369,8 +369,8 @@ function Dashboard() {
 
                     {/* Real-time watts */}
                     <div className="flex items-baseline gap-1 mt-1 mb-3">
-                      <span className={`font-data-mono text-lg font-bold ${device.powerState === 'ON' ? 'text-[#35259B]' : 'text-slate-300'}`}>
-                        {device.powerState === 'ON' ? currentWatts.toFixed(0) : '0'}
+                      <span className={`font-data-mono text-lg font-bold ${device.powerState === 'ON' ? 'text-[#0EA5E9]' : 'text-slate-300'}`}>
+                        {device.powerState === 'ON' ? currentWatts.toFixed(1) : '0.0'}
                       </span>
                       <span className="text-xs font-semibold text-slate-400">W</span>
                     </div>
@@ -378,8 +378,8 @@ function Dashboard() {
                     {/* Energy + status row */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="font-label-caps text-[9px] text-slate-400 font-bold uppercase">Today</div>
-                        <div className="font-data-mono text-xs text-slate-600 font-bold">{energyKWh.toFixed(3)} kWh</div>
+                        <div className="font-label-caps text-[9px] text-slate-400 font-bold uppercase">Today's Energy</div>
+                        <div className="font-data-mono text-xs text-[#35259B] font-bold">{energyKWh.toFixed(4)} kWh</div>
                       </div>
                       {device.powerState === 'ON' ? (
                         <span className="font-label-caps text-[9px] px-2 py-0.5 rounded border border-green-200 text-green-600 bg-green-50 uppercase font-bold">
@@ -411,7 +411,7 @@ function Dashboard() {
                         </span>
                         {energyThresholdKWh > 0 ? (
                           <span className={usagePct >= 100 ? "text-red-500 font-bold" : ""}>
-                            {energyKWh.toFixed(3)} / {energyThresholdKWh} kWh ({usagePct.toFixed(0)}%)
+                            {energyKWh.toFixed(4)} / {energyThresholdKWh} kWh ({usagePct.toFixed(0)}%)
                           </span>
                         ) : (
                           <button

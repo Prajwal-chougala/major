@@ -12,7 +12,7 @@ function Devices() {
 
   useEffect(() => {
     fetchDevices();
-    const interval = setInterval(fetchDevices, 15000);
+    const interval = setInterval(fetchDevices, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -113,16 +113,17 @@ function Devices() {
     <Layout>
       <div className="min-h-screen px-6 py-12 mx-auto bg-slate-50 text-slate-700 font-inter">
         <div className="flex flex-col w-full gap-8">
-          <div className="flex items-end justify-between w-full">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between w-full gap-4">
             <div className="flex flex-col gap-1">
-              <span className="font-label-caps text-[#0EA5E9] font-bold text-[10px] tracking-widest uppercase">
-                SYSTEM INVENTORY
+              <span className="font-label-caps text-[#0EA5E9] font-bold text-[10px] tracking-widest uppercase flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#0EA5E9] animate-pulse shadow-[0_0_8px_rgba(14,165,233,0.8)]"></span>
+                LIVE HARDWARE TELEMETRY (SYNCED)
               </span>
-              <h1 className="font-display-lg text-slate-900 font-extrabold">
+              <h1 className="font-display-lg text-slate-900 font-extrabold text-3xl sm:text-4xl">
                 Connected Devices
               </h1>
             </div>
-            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-gradient-to-r from-[#35259B] to-[#0EA5E9] hover:from-[#2143B8] hover:to-[#0EA5E9] text-white px-6 py-3 rounded-full shadow-md shadow-sky-500/10 hover:shadow-sky-500/25 transition-all duration-300 active:scale-95 group">
+            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-gradient-to-r from-[#35259B] to-[#0EA5E9] hover:from-[#2143B8] hover:to-[#0EA5E9] text-white px-6 py-3 rounded-full shadow-md shadow-sky-500/10 hover:shadow-sky-500/25 transition-all duration-300 active:scale-95 group w-fit">
               <span className="material-symbols-outlined">
                 add
               </span>
@@ -190,102 +191,206 @@ function Devices() {
 
           <div className="grid grid-cols-12 gap-gutter relative">
             <div className="col-span-12 flex flex-col gap-6">
-              {Array.isArray(devices) && devices.map((device, index) => (
-                <div key={device.deviceId} className="group relative z-10">
-                  <div className="bg-white border border-slate-200/80 rounded-3xl p-8 h-full flex flex-col justify-between overflow-hidden relative shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-8 relative z-10">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-16 h-16 rounded-2xl bg-slate-50 border flex items-center justify-center relative overflow-hidden transition-all ${device.powerState === 'ON' ? 'bg-indigo-50 border-indigo-100 text-[#35259B] shadow-[0_0_15px_rgba(53,37,155,0.15)]' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
-                          <span
-                            className="material-symbols-outlined text-3xl"
-                            style={{ fontVariationSettings: "'FILL' 1" }}
-                          >
-                            settings_input_component
-                          </span>
+              {Array.isArray(devices) && devices.map((device) => {
+                const consumedEnergy = Number(device.energyKWh !== undefined ? device.energyKWh : (device.dailyEnergyKWh || 0));
+                const currentPower = device.powerState === 'ON' ? Number(device.currentPowerW || 0) : 0;
+                const hasThreshold = device.powerLimit !== null && device.powerLimit !== undefined && device.powerLimit > 0;
+                const percentConsumed = hasThreshold ? Math.min(100, Math.round((consumedEnergy / device.powerLimit) * 100)) : 0;
+                const isLimitNear = hasThreshold && percentConsumed >= 85;
+
+                return (
+                  <div key={device.deviceId} className="group relative z-10">
+                    <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 h-full flex flex-col justify-between overflow-hidden relative shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 relative z-10">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center relative overflow-hidden transition-all ${device.powerState === 'ON' ? 'bg-indigo-50 border border-indigo-100 text-[#35259B] shadow-[0_0_20px_rgba(53,37,155,0.15)]' : 'bg-slate-100 border border-slate-200 text-slate-400'}`}>
+                            <span
+                              className="material-symbols-outlined text-3xl"
+                              style={{ fontVariationSettings: "'FILL' 1" }}
+                            >
+                              settings_input_component
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                                {device.name}
+                              </h2>
+                              {device.isOnline && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-600 border border-sky-200">
+                                  ONLINE
+                                </span>
+                              )}
+                            </div>
+                            <p className="font-mono text-xs text-slate-400 flex items-center gap-2 mt-1">
+                              <span className={`w-2 h-2 rounded-full ${device.powerState === 'ON' ? 'bg-[#0EA5E9] animate-pulse shadow-[0_0_8px_rgba(14,165,233,0.8)]' : 'bg-slate-300'}`}></span>
+                              API Key: <span className="text-slate-600 font-semibold">{device.apiKey || 'Hidden'}</span>
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                            {device.name}
-                          </h2>
-                          <p className="font-data-mono text-xs text-slate-400 flex items-center gap-2 mt-1">
-                            <span className={`w-2 h-2 rounded-full ${device.powerState === 'ON' ? 'bg-[#0EA5E9] animate-pulse shadow-[0_0_8px_rgba(14,165,233,0.8)]' : 'bg-slate-200'}`}></span>
-                            API Key: {device.apiKey || 'Hidden'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <span className={`px-4 py-1.5 rounded-full font-label-caps text-[10px] font-bold flex items-center gap-2 border ${device.powerState === 'ON' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>
-                          <span className="material-symbols-outlined text-sm">
-                            power_settings_new
-                          </span>{" "}
-                          {device.powerState === 'ON' ? 'ON' : 'OFF'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-6 mb-8 relative z-10">
-                      <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2 hover:bg-slate-100 transition-colors">
-                        <span className="font-label-caps text-slate-400 font-bold text-[10px] tracking-wider uppercase">
-                          ENERGY THRESHOLD
-                        </span>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className={`text-3xl font-extrabold font-mono ${device.powerState === 'ON' ? 'text-[#0EA5E9]' : 'text-slate-400'}`}>
-                            {device.powerLimit !== null && device.powerLimit !== undefined ? device.powerLimit : 'N/A'}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-400">
-                            kWh
-                          </span>
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2 hover:bg-slate-100 transition-colors">
-                        <span className="font-label-caps text-slate-400 font-bold text-[10px] tracking-wider uppercase">
-                          CONSUMED TODAY
-                        </span>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className={`text-3xl font-extrabold font-mono ${device.powerState === 'ON' ? 'text-[#35259B]' : 'text-slate-400'}`}>
-                            {(device.dailyEnergyKWh || 0).toFixed(2)}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-400">
-                            kWh
+                        <div className="flex items-center gap-3">
+                          {device.powerState === 'ON' && currentPower > 0 && (
+                            <span className="px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full font-bold text-xs flex items-center gap-1.5 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              DRAWING POWER
+                            </span>
+                          )}
+                          <span className={`px-4 py-1.5 rounded-full font-label-caps text-[11px] font-bold flex items-center gap-2 border ${device.powerState === 'ON' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>
+                            <span className="material-symbols-outlined text-sm">
+                              power_settings_new
+                            </span>{" "}
+                            {device.powerState === 'ON' ? 'ON' : 'OFF'}
                           </span>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-slate-100 pt-6 relative z-10">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => { setEditingDevice(device); setEditThreshold(device.powerLimit !== null && device.powerLimit !== undefined ? device.powerLimit : 2.5); }} className="px-3 py-1.5 rounded-lg border border-sky-200 text-[#0EA5E9] font-label-caps text-[10px] font-bold hover:bg-sky-50 transition-colors flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm">
-                            tune
-                          </span>{" "}
-                          EDIT THRESHOLD
-                        </button>
-                        <button onClick={() => regenerateKey(device.deviceId)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 font-label-caps text-[10px] font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm">
-                            refresh
-                          </span>{" "}
-                          REGENERATE KEY
-                        </button>
-                        <button onClick={() => deleteDevice(device.deviceId)} className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 font-label-caps text-[10px] font-bold hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm">
-                            delete
-                          </span>{" "}
-                          DELETE
-                        </button>
+
+                      {/* 3 Metric Display Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 relative z-10">
+                        {/* Currently Consuming Power Draw */}
+                        <div className="bg-gradient-to-br from-slate-50 to-indigo-50/20 border border-slate-200/70 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-indigo-200 transition-all shadow-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="font-label-caps text-slate-500 font-bold text-[10px] tracking-wider uppercase flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm text-[#0EA5E9]">bolt</span>
+                              CURRENTLY CONSUMING
+                            </span>
+                            <span className={`w-2 h-2 rounded-full ${device.powerState === 'ON' && currentPower > 0 ? 'bg-emerald-500 animate-ping' : 'bg-slate-300'}`}></span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5 mt-2">
+                            <span className={`text-3xl font-extrabold font-mono tracking-tight ${device.powerState === 'ON' ? 'text-[#0EA5E9]' : 'text-slate-400'}`}>
+                              {currentPower.toFixed(1)}
+                            </span>
+                            <span className="text-xs font-bold text-slate-400">
+                              W
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-medium mt-1">
+                            {device.powerState === 'ON' ? `≈ ${(currentPower / 1000).toFixed(3)} kW active draw` : 'Device is inactive'}
+                          </span>
+                        </div>
+
+                        {/* Consumed Today (Continuous Energy) */}
+                        <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200/70 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-indigo-200 transition-all shadow-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="font-label-caps text-slate-500 font-bold text-[10px] tracking-wider uppercase flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm text-[#35259B]">electric_meter</span>
+                              TODAY'S ENERGY CONSUMED
+                            </span>
+                            <span className="text-[10px] font-bold text-[#35259B] bg-indigo-50 px-1.5 py-0.5 rounded">
+                              REAL-TIME
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5 mt-2">
+                            <span className={`text-3xl font-extrabold font-mono tracking-tight ${device.powerState === 'ON' ? 'text-[#35259B]' : 'text-slate-400'}`}>
+                              {consumedEnergy.toFixed(4)}
+                            </span>
+                            <span className="text-xs font-bold text-slate-400">
+                              kWh
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-medium mt-1">
+                            {consumedEnergy > 0 ? `Cost: ≈ ₹${(consumedEnergy * 8).toFixed(2)}` : 'Accumulating live sensor energy'}
+                          </span>
+                        </div>
+
+                        {/* Energy Threshold Limit */}
+                        <div className="bg-gradient-to-br from-slate-50 to-slate-100/40 border border-slate-200/70 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-slate-300 transition-all shadow-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="font-label-caps text-slate-500 font-bold text-[10px] tracking-wider uppercase flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm text-slate-500">crisis_alert</span>
+                              DAILY THRESHOLD
+                            </span>
+                            {hasThreshold && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isLimitNear ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-600'}`}>
+                                {percentConsumed}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-baseline gap-1.5 mt-2">
+                            <span className="text-3xl font-extrabold font-mono tracking-tight text-slate-800">
+                              {hasThreshold ? device.powerLimit : 'None'}
+                            </span>
+                            {hasThreshold && (
+                              <span className="text-xs font-bold text-slate-400">
+                                kWh
+                              </span>
+                            )}
+                          </div>
+                          {hasThreshold ? (
+                            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-2">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${isLimitNear ? 'bg-red-500' : 'bg-gradient-to-r from-[#35259B] to-[#0EA5E9]'}`}
+                                style={{ width: `${percentConsumed}%` }}
+                              ></div>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium mt-1">
+                              Auto-turnoff disabled
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <label className="relative inline-flex items-center cursor-pointer ml-4">
-                          <input
-                            checked={device.powerState === 'ON'}
-                            onChange={() => toggleDevice(device.deviceId, device.powerState)}
-                            className="sr-only peer"
-                            type="checkbox"
-                          />
-                          <div className="w-16 h-8 bg-slate-200 rounded-full peer peer-checked:after:translate-x-8 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[#35259B] shadow-inner border border-slate-300"></div>
-                        </label>
+
+                      {/* Real-Time Sensor Telemetry Ribbon */}
+                      {device.powerState === 'ON' && (
+                        <div className="flex flex-wrap items-center gap-3 bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-2.5 mb-6 text-xs text-slate-600 relative z-10">
+                          <span className="font-bold text-slate-400 tracking-wider text-[10px] uppercase flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">sensors</span>
+                            SENSOR TELEMETRY:
+                          </span>
+                          <span className="font-mono bg-white px-2 py-1 rounded border border-slate-200 font-semibold text-slate-700">
+                            ⚡ {device.voltage ? Number(device.voltage).toFixed(1) : '230.0'} V
+                          </span>
+                          <span className="font-mono bg-white px-2 py-1 rounded border border-slate-200 font-semibold text-slate-700">
+                            🔌 {device.current ? Number(device.current).toFixed(2) : '0.00'} A
+                          </span>
+                          <span className="font-mono bg-white px-2 py-1 rounded border border-slate-200 font-semibold text-slate-700">
+                            🌊 {device.frequency ? Number(device.frequency).toFixed(1) : '50.0'} Hz
+                          </span>
+                          <span className="font-mono bg-white px-2 py-1 rounded border border-slate-200 font-semibold text-slate-700">
+                            🎯 PF: {device.powerFactor !== null && device.powerFactor !== undefined ? Number(device.powerFactor).toFixed(2) : '1.00'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Card Footer Actions */}
+                      <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-6 relative z-10 gap-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button onClick={() => { setEditingDevice(device); setEditThreshold(device.powerLimit !== null && device.powerLimit !== undefined ? device.powerLimit : 2.5); }} className="px-3 py-1.5 rounded-lg border border-sky-200 text-[#0EA5E9] font-label-caps text-[10px] font-bold hover:bg-sky-50 transition-colors flex items-center gap-1.5 shadow-sm">
+                            <span className="material-symbols-outlined text-sm">
+                              tune
+                            </span>{" "}
+                            EDIT THRESHOLD
+                          </button>
+                          <button onClick={() => regenerateKey(device.deviceId)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 font-label-caps text-[10px] font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-sm">
+                              refresh
+                            </span>{" "}
+                            REGENERATE KEY
+                          </button>
+                          <button onClick={() => deleteDevice(device.deviceId)} className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 font-label-caps text-[10px] font-bold hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-sm">
+                              delete
+                            </span>{" "}
+                            DELETE
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-xs font-semibold text-slate-400">Power Relay:</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              checked={device.powerState === 'ON'}
+                              onChange={() => toggleDevice(device.deviceId, device.powerState)}
+                              className="sr-only peer"
+                              type="checkbox"
+                            />
+                            <div className="w-14 h-7 bg-slate-200 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[#35259B] shadow-inner border border-slate-300"></div>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               
               {(!devices || devices.length === 0) && (
                 <div className="bg-white border border-slate-200 border-dashed rounded-3xl p-12 flex flex-col items-center justify-center text-center shadow-sm">

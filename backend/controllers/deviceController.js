@@ -1,5 +1,14 @@
 const Device = require("../models/Device");
+const Reading = require("../models/Reading");
 const { clearAutoOffTimer } = require("../services/alertService");
+
+// Helper to calculate today's IST start
+const getStartOfTodayIST = () => {
+  const now = new Date();
+  const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+  istNow.setUTCHours(0, 0, 0, 0);
+  return new Date(istNow.getTime() - 5.5 * 60 * 60 * 1000);
+};
 
 // Create a new device
 const createDevice = async (req, res) => {
@@ -45,7 +54,7 @@ const createDevice = async (req, res) => {
 };
 
 
-// Get all devices belonging to logged-in user
+// Get all devices belonging to logged-in user enriched with real-time telemetry
 const getDevices = async (req, res) => {
   try {
     const devices = await Device.find({
@@ -54,9 +63,82 @@ const getDevices = async (req, res) => {
       createdAt: -1,
     });
 
+    if (devices.length === 0) {
+      return res.status(200).json({
+        count: 0,
+        devices: [],
+      });
+    }
+
+    const deviceIds = devices.map((d) => d.deviceId);
+    const startOfDay = getStartOfTodayIST();
+    const now = new Date();
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+
+    // Fetch today's readings for these devices
+    const todayReadings = await Reading.find({
+      deviceId: { $in: deviceIds },
+      timestamp: { $gte: startOfDay },
+    })
+      .sort({ timestamp: 1 })
+      .lean();
+
+    const readingsByDevice = {};
+    for (const r of todayReadings) {
+      if (!readingsByDevice[r.deviceId]) readingsByDevice[r.deviceId] = [];
+      readingsByDevice[r.deviceId].push(r);
+    }
+
+    const enrichedDevices = await Promise.all(
+      devices.map(async (device) => {
+        const deviceReadings = readingsByDevice[device.deviceId] || [];
+
+        let latestReading =
+          deviceReadings.length > 0
+            ? deviceReadings[deviceReadings.length - 1]
+            : null;
+
+        if (!latestReading) {
+          latestReading = await Reading.findOne({ deviceId: device.deviceId })
+            .sort({ timestamp: -1 })
+            .lean();
+        }
+
+        // Energy trapezoidal calculation
+        let deviceEnergyKWh = 0;
+        for (let i = 1; i < deviceReadings.length; i++) {
+          const previous = deviceReadings[i - 1];
+          const current = deviceReadings[i];
+          const previousTime = new Date(previous.timestamp).getTime();
+          const currentTime = new Date(current.timestamp).getTime();
+          const hours = (currentTime - previousTime) / (1000 * 60 * 60);
+          if (hours > 0) {
+            const avgPower = (Number(previous.power) + Number(current.power)) / 2;
+            deviceEnergyKWh += (avgPower * hours) / 1000;
+          }
+        }
+
+        const activeEnergyKWh = Math.max(Number(device.dailyEnergyKWh || 0), deviceEnergyKWh);
+        const isOnline = !!(device.lastSeen && new Date(device.lastSeen) >= twoMinutesAgo);
+
+        const devObj = device.toObject ? device.toObject() : device;
+        return {
+          ...devObj,
+          isOnline,
+          currentPowerW: latestReading && device.powerState === "ON" ? Number(latestReading.power) : 0,
+          energyKWh: Number(activeEnergyKWh.toFixed(4)),
+          dailyEnergyKWh: Number(activeEnergyKWh.toFixed(4)),
+          voltage: latestReading ? Number(latestReading.voltage || 0) : 0,
+          current: latestReading && device.powerState === "ON" ? Number(latestReading.current || 0) : 0,
+          frequency: latestReading && latestReading.frequency ? Number(latestReading.frequency) : (latestReading ? 50.0 : 0),
+          powerFactor: latestReading && latestReading.powerFactor ? Number(latestReading.powerFactor) : (latestReading ? 1.0 : 0),
+        };
+      })
+    );
+
     return res.status(200).json({
-      count: devices.length,
-      devices,
+      count: enrichedDevices.length,
+      devices: enrichedDevices,
     });
   } catch (error) {
     console.error("Get devices error:", error);
@@ -84,8 +166,59 @@ const getDeviceById = async (req, res) => {
       });
     }
 
+    const startOfDay = getStartOfTodayIST();
+    const now = new Date();
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+
+    const deviceReadings = await Reading.find({
+      deviceId,
+      timestamp: { $gte: startOfDay },
+    })
+      .sort({ timestamp: 1 })
+      .lean();
+
+    let latestReading =
+      deviceReadings.length > 0
+        ? deviceReadings[deviceReadings.length - 1]
+        : null;
+
+    if (!latestReading) {
+      latestReading = await Reading.findOne({ deviceId })
+        .sort({ timestamp: -1 })
+        .lean();
+    }
+
+    let deviceEnergyKWh = 0;
+    for (let i = 1; i < deviceReadings.length; i++) {
+      const previous = deviceReadings[i - 1];
+      const current = deviceReadings[i];
+      const previousTime = new Date(previous.timestamp).getTime();
+      const currentTime = new Date(current.timestamp).getTime();
+      const hours = (currentTime - previousTime) / (1000 * 60 * 60);
+      if (hours > 0) {
+        const avgPower = (Number(previous.power) + Number(current.power)) / 2;
+        deviceEnergyKWh += (avgPower * hours) / 1000;
+      }
+    }
+
+    const activeEnergyKWh = Math.max(Number(device.dailyEnergyKWh || 0), deviceEnergyKWh);
+    const isOnline = !!(device.lastSeen && new Date(device.lastSeen) >= twoMinutesAgo);
+
+    const devObj = device.toObject ? device.toObject() : device;
+    const enrichedDevice = {
+      ...devObj,
+      isOnline,
+      currentPowerW: latestReading && device.powerState === "ON" ? Number(latestReading.power) : 0,
+      energyKWh: Number(activeEnergyKWh.toFixed(4)),
+      dailyEnergyKWh: Number(activeEnergyKWh.toFixed(4)),
+      voltage: latestReading ? Number(latestReading.voltage || 0) : 0,
+      current: latestReading && device.powerState === "ON" ? Number(latestReading.current || 0) : 0,
+      frequency: latestReading && latestReading.frequency ? Number(latestReading.frequency) : (latestReading ? 50.0 : 0),
+      powerFactor: latestReading && latestReading.powerFactor ? Number(latestReading.powerFactor) : (latestReading ? 1.0 : 0),
+    };
+
     return res.status(200).json({
-      device,
+      device: enrichedDevice,
     });
   } catch (error) {
     console.error("Get device error:", error);

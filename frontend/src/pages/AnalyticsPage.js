@@ -94,8 +94,19 @@ function AnalyticsPage() {
       {
         label: 'Energy (kWh)',
         data: chartData.map(d => d.energy),
-        backgroundColor: '#0EA5E9',
-        borderRadius: 4,
+        backgroundColor: (context) => {
+          const ctx = context.chart.ctx;
+          const chartArea = context.chart.chartArea;
+          if (!chartArea) return '#0EA5E9';
+          const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+          gradient.addColorStop(0, '#35259B');
+          gradient.addColorStop(1, '#0EA5E9');
+          return gradient;
+        },
+        hoverBackgroundColor: '#0284C7',
+        borderRadius: 8,
+        borderSkipped: false,
+        maxBarThickness: 42,
       }
     ]
   };
@@ -103,25 +114,38 @@ function AnalyticsPage() {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 600,
+      easing: 'easeInOutQuad',
+    },
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(10, 15, 18, 0.9)',
-        titleFont: { family: 'Inter', size: 12 },
-        bodyFont: { family: 'JetBrains Mono', size: 13 },
-        padding: 12,
-        cornerRadius: 8,
+        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
+        borderWidth: 1,
+        titleFont: { family: 'Inter, sans-serif', size: 12, weight: '600' },
+        bodyFont: { family: 'JetBrains Mono, monospace', size: 13, weight: '700' },
+        padding: { top: 10, bottom: 10, left: 14, right: 14 },
+        cornerRadius: 10,
         displayColors: false,
+        callbacks: {
+          label: (context) => `⚡ Energy: ${Number(context.parsed.y).toFixed(4)} kWh`,
+        }
       }
     },
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: '#859399', font: { family: 'JetBrains Mono', size: 11 } }
+        ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono, monospace', size: 11 } }
       },
       y: {
-        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        ticks: { color: '#859399', font: { family: 'JetBrains Mono', size: 11 } },
+        grid: { color: 'rgba(148, 163, 184, 0.07)' },
+        ticks: { 
+          color: '#94a3b8', 
+          font: { family: 'JetBrains Mono, monospace', size: 11 },
+          callback: (value) => `${Number(value).toFixed(2)} kWh`,
+        },
         beginAtZero: true
       }
     }

@@ -91,14 +91,20 @@ const getDashboard = async (req, res) => {
       }
 
       // Latest reading for this device
-      const latestReading =
+      let latestReading =
         deviceReadings.length > 0
           ? deviceReadings[
               deviceReadings.length - 1
             ]
           : null;
 
-      if (latestReading) {
+      if (!latestReading) {
+        latestReading = await Reading.findOne({ deviceId: device.deviceId })
+          .sort({ timestamp: -1 })
+          .lean();
+      }
+
+      if (latestReading && device.powerState === "ON") {
         currentPowerW +=
           Number(latestReading.power) || 0;
       }
@@ -155,13 +161,21 @@ const getDashboard = async (req, res) => {
         isOnline: !!(device.lastSeen && new Date(device.lastSeen) >= twoMinutesAgo),
         powerState: device.powerState || "OFF",
         powerLimit: device.powerLimit !== undefined && device.powerLimit !== null ? device.powerLimit : null,
-        currentPowerW: latestReading
+        currentPowerW: latestReading && device.powerState === "ON"
           ? Number(latestReading.power)
           : 0,
         energyKWh: Number(
           activeEnergyKWh.toFixed(4)
         ),
+        dailyEnergyKWh: Number(
+          activeEnergyKWh.toFixed(4)
+        ),
+        voltage: latestReading ? Number(latestReading.voltage || 0) : 0,
+        current: latestReading && device.powerState === "ON" ? Number(latestReading.current || 0) : 0,
+        frequency: latestReading && latestReading.frequency ? Number(latestReading.frequency) : (latestReading ? 50.0 : 0),
+        powerFactor: latestReading && latestReading.powerFactor ? Number(latestReading.powerFactor) : (latestReading ? 1.0 : 0),
         lastSeen: device.lastSeen,
+        rawReading: latestReading,
       });
     }
 
@@ -180,6 +194,19 @@ const getDashboard = async (req, res) => {
     const estimatedCost =
       totalEnergyKWh * RATE_PER_KWH;
 
+    // Find the latest reading across all devices for live telemetry cards
+    let latestSystemReading = null;
+    for (const dev of deviceSummaries) {
+      if (dev.rawReading) {
+        if (!latestSystemReading || new Date(dev.rawReading.timestamp) > new Date(latestSystemReading.timestamp)) {
+          latestSystemReading = dev.rawReading;
+        }
+      }
+    }
+
+    // Clean up internal rawReading property before sending
+    deviceSummaries.forEach(d => { delete d.rawReading; });
+
     return res.status(200).json({
       totalEnergyKWh: Number(
         totalEnergyKWh.toFixed(4)
@@ -188,6 +215,8 @@ const getDashboard = async (req, res) => {
       currentPowerKW: Number(
         (currentPowerW / 1000).toFixed(3)
       ),
+
+      currentPowerW: Number(currentPowerW.toFixed(1)),
 
       activeDevices,
 
@@ -206,6 +235,11 @@ const getDashboard = async (req, res) => {
       peakPowerKW: Number(
         (peakPowerW / 1000).toFixed(3)
       ),
+
+      latestVoltage: latestSystemReading ? Number(latestSystemReading.voltage || 0) : 0,
+      latestFrequency: latestSystemReading && latestSystemReading.frequency ? Number(latestSystemReading.frequency) : (latestSystemReading ? 50.0 : 0),
+      latestCurrent: latestSystemReading ? Number(latestSystemReading.current || 0) : 0,
+      latestPowerFactor: latestSystemReading && latestSystemReading.powerFactor ? Number(latestSystemReading.powerFactor) : (latestSystemReading ? 1.0 : 0),
 
       devices: deviceSummaries,
     });
