@@ -49,6 +49,7 @@ const register = async (req, res) => {
       name: name.trim(),
       email: normalizedEmail,
       mobile: mobile.trim(),
+      mobileNumber: mobile.trim(),
       passwordHash,
     });
 

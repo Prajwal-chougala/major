@@ -14,11 +14,17 @@ function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleAuth = async (e) => {
     e.preventDefault();
     
+    if (!isLogin && password.length < 8) {
+      alert("Password must contain at least 8 characters!");
+      return;
+    }
+
     if (!isLogin && password !== confirmPassword) {
       alert("Passwords do not match!");
       return;
@@ -29,30 +35,39 @@ function AuthPage() {
       return;
     }
 
+    setSubmitting(true);
+
     try {
       const endpoint = isLogin ? "/auth/login" : "/auth/register";
-      const payload = isLogin ? { identifier: email, password } : { name, email, mobile, password };
+      const payload = isLogin ? { identifier: email, password } : { name: name.trim(), email: email.trim(), mobile: mobile.trim(), password };
       const res = await API.post(endpoint, payload);
 
       const { token, user } = res.data;
-      localStorage.setItem("token", token);
+      if (token) {
+        localStorage.setItem("token", token);
 
-      const decoded = jwtDecode(token);
-      const userObj = {
-        id: decoded.id,
-        name: user?.name || "",
-        email: user?.email || "",
-        mobileNumber: user?.mobileNumber || ""
-      };
-      localStorage.setItem("user", JSON.stringify(userObj));
+        let userId = user?.id || user?._id;
+        try {
+          const decoded = jwtDecode(token);
+          userId = decoded.userId || decoded.id || userId;
+        } catch (err) {}
+
+        const userObj = {
+          id: userId,
+          name: user?.name || name || "",
+          email: user?.email || email || "",
+          mobileNumber: user?.mobile || user?.mobileNumber || mobile || ""
+        };
+        localStorage.setItem("user", JSON.stringify(userObj));
+      }
 
       navigate("/dashboard");
     } catch (error) {
       console.error("Auth error:", error.response?.data || error.message);
-      alert(
-        error.response?.data?.error ||
-          "Authentication failed. Please check your credentials.",
-      );
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || "Authentication failed. Please check your details.";
+      alert(errorMsg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -323,9 +338,17 @@ function AuthPage() {
 
                 <button
                   type="submit"
-                  className="w-full mt-6 py-3.5 bg-gradient-to-r from-[#35259B] to-[#0EA5E9] hover:from-[#2143B8] hover:to-[#0EA5E9] text-white font-semibold rounded-full shadow-lg shadow-sky-500/10 hover:shadow-sky-500/25 transition-all text-center select-none active:scale-[0.98] text-sm"
+                  disabled={submitting}
+                  className={`w-full mt-6 py-3.5 bg-gradient-to-r from-[#35259B] to-[#0EA5E9] hover:from-[#2143B8] hover:to-[#0EA5E9] text-white font-semibold rounded-full shadow-lg shadow-sky-500/10 hover:shadow-sky-500/25 transition-all text-center select-none active:scale-[0.98] text-sm flex items-center justify-center gap-2 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
-                  Create Account
+                  {submitting ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
+                      <span>Creating Account...</span>
+                    </>
+                  ) : (
+                    <span>Create Account</span>
+                  )}
                 </button>
               </form>
             </>
