@@ -104,10 +104,17 @@ const getDashboard = async (req, res) => {
           .lean();
       }
 
-      if (latestReading && device.powerState === "ON") {
-        currentPowerW +=
-          Number(latestReading.power) || 0;
-      }
+      const isHardwareActive = !!(
+        device.powerState === "ON" &&
+        device.lastSeen &&
+        new Date(device.lastSeen) >= twoMinutesAgo &&
+        latestReading &&
+        latestReading.timestamp &&
+        new Date(latestReading.timestamp) >= twoMinutesAgo
+      );
+
+      const deviceRealTimePowerW = isHardwareActive ? Number(latestReading.power) || 0 : 0;
+      currentPowerW += deviceRealTimePowerW;
 
       // Energy calculation
       let deviceEnergyKWh = 0;
@@ -161,19 +168,17 @@ const getDashboard = async (req, res) => {
         isOnline: !!(device.lastSeen && new Date(device.lastSeen) >= twoMinutesAgo),
         powerState: device.powerState || "OFF",
         powerLimit: device.powerLimit !== undefined && device.powerLimit !== null ? device.powerLimit : null,
-        currentPowerW: latestReading && device.powerState === "ON"
-          ? Number(latestReading.power)
-          : 0,
+        currentPowerW: deviceRealTimePowerW,
         energyKWh: Number(
           activeEnergyKWh.toFixed(4)
         ),
         dailyEnergyKWh: Number(
           activeEnergyKWh.toFixed(4)
         ),
-        voltage: latestReading ? Number(latestReading.voltage || 0) : 0,
-        current: latestReading && device.powerState === "ON" ? Number(latestReading.current || 0) : 0,
-        frequency: latestReading && latestReading.frequency ? Number(latestReading.frequency) : (latestReading ? 50.0 : 0),
-        powerFactor: latestReading && latestReading.powerFactor ? Number(latestReading.powerFactor) : (latestReading ? 1.0 : 0),
+        voltage: isHardwareActive && latestReading ? Number(latestReading.voltage || 0) : 0,
+        current: isHardwareActive && latestReading ? Number(latestReading.current || 0) : 0,
+        frequency: isHardwareActive && latestReading && latestReading.frequency ? Number(latestReading.frequency) : (isHardwareActive ? 50.0 : 0),
+        powerFactor: isHardwareActive && latestReading && latestReading.powerFactor ? Number(latestReading.powerFactor) : (isHardwareActive ? 1.0 : 0),
         lastSeen: device.lastSeen,
         rawReading: latestReading,
       });

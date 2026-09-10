@@ -30,7 +30,7 @@ function Dashboard() {
         if (chartRes.data?.data?.length > 0) {
           const chartData = chartRes.data.data.map(item => ({
             timestamp: new Date(item.timestamp).getTime(),
-            power: (item.power || 0) * 1000, // convert kW → W for the Graph component
+            power: item.powerW !== undefined ? Number(item.powerW) : Number(item.power || 0) * 1000,
             energy: Number(item.energyKWh || 0),
           }));
           setChartHistory(chartData.slice(-30));
@@ -317,6 +317,7 @@ function Dashboard() {
                   data={chartHistory}
                   title="Consumption Profile (Live)"
                   colorHex="#0EA5E9"
+                  defaultMetric="power"
                 />
               </div>
             </div>
