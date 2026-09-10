@@ -165,7 +165,7 @@ const sendEmailAlert = async (email, subject, message, customHtml = null) => {
           
           <!-- Action Button -->
           <div style="text-align: center; margin: 28px 0 12px 0;">
-            <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #2563eb, #0284c7); color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+            <a href="${process.env.CLIENT_URL || 'https://major-six-amber.vercel.app/'}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #2563eb, #0284c7); color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
               Open WattWise Dashboard →
             </a>
           </div>

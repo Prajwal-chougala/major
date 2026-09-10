@@ -13,13 +13,23 @@
   html, body {
     margin: 0;
     padding: 0;
-    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   body {
     background-color: #0B1326;
     color: #DAE2FD;
     font-family: 'Inter', sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Allow text selection in inputs and copyable text */
+  input, textarea, p, span, h1, h2, h3, h4, code, pre {
+    -webkit-user-select: text;
+    user-select: text;
   }
 
   /* Hide scrollbars for premium look */
