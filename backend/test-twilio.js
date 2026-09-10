@@ -15,10 +15,10 @@ async function testSMS() {
         // We'll test sending to the same number just to see the exact Twilio error
         // Or if you want to test sending to a hardcoded number, we could, but let's query the DB for the user's number
         const mongoose = require('mongoose');
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
         const User = require('./models/User');
-        const user = await User.findOne(); // Grab any user to get their number
-        const targetNumber = user ? user.mobileNumber : "+1234567890";
+        const user = await User.findOne({ mobile: { $exists: true, $ne: null } }) || await User.findOne({}); // Grab user with mobile
+        const targetNumber = user ? (user.mobile || user.mobileNumber) : "+919513156832";
         
         console.log(`Attempting to send SMS from ${TWILIO_PHONE_NUMBER} to ${targetNumber}...`);
         

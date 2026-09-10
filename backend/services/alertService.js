@@ -135,19 +135,27 @@ const createReadingAlerts = async ({
         });
 
       if (!recentAlert) {
+        const alertMsg = `${device.name} is consuming ${Number(reading.power).toFixed(1)} W.`;
         await Alert.create({
           owner: device.owner,
           device: device._id,
           deviceId: device.deviceId,
           type,
           title: "High power consumption",
-          message:
-            `${device.name} is consuming ${Number(
-              reading.power
-            ).toFixed(1)} W.`,
+          message: alertMsg,
           severity,
           isRead: false,
         });
+
+        // Dispatch Email Alert to device owner
+        const user = await User.findById(device.owner);
+        if (user && user.email) {
+          await sendEmailAlert(
+            user.email,
+            `⚠️ WattWise Warning: High Power Consumption on ${device.name}`,
+            `Your device "${device.name}" (${device.deviceId}) is currently consuming high power: ${Number(reading.power).toFixed(1)} W.`
+          );
+        }
       }
     }
 
