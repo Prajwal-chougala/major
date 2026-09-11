@@ -160,12 +160,14 @@ const getDashboard = async (req, res) => {
       const activeEnergyKWh = Math.max(Number(device.dailyEnergyKWh || 0), deviceEnergyKWh);
       totalEnergyKWh += activeEnergyKWh;
 
+      const isOnline = !!(device.lastSeen && new Date(device.lastSeen) >= twoMinutesAgo);
+
       deviceSummaries.push({
         deviceId: device.deviceId,
         name: device.name,
         location: device.location || "",
-        status: device.status,
-        isOnline: !!(device.lastSeen && new Date(device.lastSeen) >= twoMinutesAgo),
+        status: isOnline ? "online" : "offline",
+        isOnline,
         powerState: device.powerState || "OFF",
         powerLimit: device.powerLimit !== undefined && device.powerLimit !== null ? device.powerLimit : null,
         currentPowerW: deviceRealTimePowerW,

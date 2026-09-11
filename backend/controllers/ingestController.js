@@ -121,6 +121,11 @@ const getIngestStatus = async (req, res) => {
   try {
     const device = req.device; // set by apiKeyMiddleware
 
+    // Update lastSeen & status so hardware polling keeps the device online
+    device.lastSeen = new Date();
+    device.status = "online";
+    await device.save();
+
     return res.status(200).json({
       powerState: device.powerState,
       powerLimit: device.powerLimit,

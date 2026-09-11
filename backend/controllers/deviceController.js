@@ -125,6 +125,7 @@ const getDevices = async (req, res) => {
         return {
           ...devObj,
           isOnline,
+          status: isOnline ? "online" : "offline",
           currentPowerW: latestReading && device.powerState === "ON" ? Number(latestReading.power) : 0,
           energyKWh: Number(activeEnergyKWh.toFixed(4)),
           dailyEnergyKWh: Number(activeEnergyKWh.toFixed(4)),
@@ -208,6 +209,7 @@ const getDeviceById = async (req, res) => {
     const enrichedDevice = {
       ...devObj,
       isOnline,
+      status: isOnline ? "online" : "offline",
       currentPowerW: latestReading && device.powerState === "ON" ? Number(latestReading.power) : 0,
       energyKWh: Number(activeEnergyKWh.toFixed(4)),
       dailyEnergyKWh: Number(activeEnergyKWh.toFixed(4)),
