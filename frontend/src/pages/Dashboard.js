@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import API from "../services/api";
@@ -18,6 +18,8 @@ function Dashboard() {
   const [chartHistory, setChartHistory] = useState([]);
   const [devices, setDevices] = useState([]);
   const [deviceCounts, setDeviceCounts] = useState({ active: 0, offline: 0, total: 0, hardware: 0 });
+  const [togglingIds, setTogglingIds] = useState({});
+  const togglingRef = useRef({});
   const [loading, setLoading] = useState(true);
   const [editingThresholdDevice, setEditingThresholdDevice] = useState(null);
   const [thresholdInput, setThresholdInput] = useState('');
@@ -70,7 +72,16 @@ function Dashboard() {
         hardware: data?.hardwareOnline || 0,
       });
 
-      setDevices(data?.devices || []);
+      const fetchedDevices = data?.devices || [];
+      setDevices(prevDevices => {
+        return fetchedDevices.map(d => {
+          if (togglingRef.current[d.deviceId]) {
+            const existing = prevDevices.find(p => p.deviceId === d.deviceId);
+            return existing ? { ...d, powerState: existing.powerState } : d;
+          }
+          return d;
+        });
+      });
 
       // Append live point to chart (power in W, continuous energy in kWh)
       const now = Date.now();
@@ -106,22 +117,41 @@ function Dashboard() {
   };
 
   const toggleDevice = async (deviceId, currentStatus) => {
+    if (togglingRef.current[deviceId]) return;
+    togglingRef.current[deviceId] = true;
+    setTogglingIds(prev => ({ ...prev, [deviceId]: true }));
+
+    const targetState = currentStatus === 'ON' ? 'OFF' : 'ON';
+
     setDevices(prev => prev.map(d =>
       d.deviceId === deviceId
-        ? { ...d, powerState: currentStatus === 'ON' ? 'OFF' : 'ON' }
+        ? { ...d, powerState: targetState }
         : d
     ));
+
     try {
+      let res;
       if (currentStatus === 'ON') {
-        await API.post(`/devices/${deviceId}/turn-off`);
+        res = await API.post(`/devices/${deviceId}/turn-off`);
       } else {
-        await API.post(`/devices/${deviceId}/turn-on`);
+        res = await API.post(`/devices/${deviceId}/turn-on`);
+      }
+
+      if (res?.data?.device) {
+        setDevices(prev => prev.map(d => d.deviceId === deviceId ? { ...d, powerState: res.data.device.powerState } : d));
       }
     } catch (e) {
-      // Revert on failure
+      console.error("Failed to toggle device", e);
       setDevices(prev => prev.map(d =>
         d.deviceId === deviceId ? { ...d, powerState: currentStatus } : d
       ));
+    } finally {
+      delete togglingRef.current[deviceId];
+      setTogglingIds(prev => {
+        const next = { ...prev };
+        delete next[deviceId];
+        return next;
+      });
     }
   };
 
@@ -355,9 +385,10 @@ function Dashboard() {
                         <span className="material-symbols-outlined">{icon}</span>
                       </div>
                       {/* Toggle */}
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className={`relative inline-flex items-center ${togglingIds[device.deviceId] ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                         <input
                           checked={device.powerState === 'ON'}
+                          disabled={!!togglingIds[device.deviceId]}
                           onChange={() => toggleDevice(device.deviceId, device.powerState)}
                           className="sr-only peer"
                           type="checkbox"

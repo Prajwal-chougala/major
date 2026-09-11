@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Layout from "../components/Layout";
 import API from "../services/api";
 
@@ -9,6 +9,8 @@ function Devices() {
   const [newDevice, setNewDevice] = useState({ name: '', powerLimit: 2.5 });
   const [editingDevice, setEditingDevice] = useState(null);
   const [editThreshold, setEditThreshold] = useState('');
+  const [togglingIds, setTogglingIds] = useState({});
+  const togglingRef = useRef({});
 
   useEffect(() => {
     fetchDevices();
@@ -19,7 +21,16 @@ function Devices() {
   const fetchDevices = async () => {
     try {
       const res = await API.get("/devices");
-      setDevices(res.data.devices || []);
+      const fetched = res.data.devices || [];
+      setDevices(prevDevices => {
+        return fetched.map(d => {
+          if (togglingRef.current[d.deviceId]) {
+            const existing = prevDevices.find(p => p.deviceId === d.deviceId);
+            return existing ? { ...d, powerState: existing.powerState } : d;
+          }
+          return d;
+        });
+      });
       setLoading(false);
     } catch (error) {
       console.error("Error fetching devices:", error);
@@ -28,21 +39,41 @@ function Devices() {
   };
 
   const toggleDevice = async (id, currentState) => {
-    try {
-      // Optimistic UI update
-      setDevices(prevDevices => prevDevices.map(d => 
-        d.deviceId === id 
-          ? { ...d, powerState: currentState === 'ON' ? 'OFF' : 'ON' } 
-          : d
-      ));
+    if (togglingRef.current[id]) return;
+    togglingRef.current[id] = true;
+    setTogglingIds(prev => ({ ...prev, [id]: true }));
 
+    const targetState = currentState === 'ON' ? 'OFF' : 'ON';
+
+    setDevices(prevDevices => prevDevices.map(d => 
+      d.deviceId === id 
+        ? { ...d, powerState: targetState } 
+        : d
+    ));
+
+    try {
+      let res;
       if (currentState === "ON") {
-        await API.post(`/devices/${id}/turn-off`).catch(e => console.log('API Failed but updating UI locally'));
+        res = await API.post(`/devices/${id}/turn-off`);
       } else {
-        await API.post(`/devices/${id}/turn-on`).catch(e => console.log('API Failed but updating UI locally'));
+        res = await API.post(`/devices/${id}/turn-on`);
+      }
+
+      if (res?.data?.device) {
+        setDevices(prev => prev.map(d => d.deviceId === id ? { ...d, powerState: res.data.device.powerState } : d));
       }
     } catch (error) {
       console.error("Error toggling device:", error);
+      setDevices(prevDevices => prevDevices.map(d => 
+        d.deviceId === id ? { ...d, powerState: currentState } : d
+      ));
+    } finally {
+      delete togglingRef.current[id];
+      setTogglingIds(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
@@ -376,9 +407,10 @@ function Devices() {
                         </div>
                         <div className="flex items-center gap-4">
                           <span className="text-xs font-semibold text-slate-400">Power Relay:</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
+                          <label className={`relative inline-flex items-center ${togglingIds[device.deviceId] ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                             <input
                               checked={device.powerState === 'ON'}
+                              disabled={!!togglingIds[device.deviceId]}
                               onChange={() => toggleDevice(device.deviceId, device.powerState)}
                               className="sr-only peer"
                               type="checkbox"
