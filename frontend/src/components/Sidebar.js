@@ -1,10 +1,12 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
 
 function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
-  
+  const { isDarkMode, toggleDarkMode } = useTheme();
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -13,125 +15,90 @@ function Sidebar({ isOpen, onClose }) {
   };
 
   const isActive = (path) => {
-    return location.pathname === path ? "bg-brand-gradient text-white shadow-[0_0_15px_rgba(14,165,233,0.4)]" : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface";
-  }
+    return location.pathname === path
+      ? "bg-gradient-to-r from-indigo-600 via-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/20"
+      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white";
+  };
+
+  const navItems = [
+    { path: "/dashboard", label: "Overview", icon: "dashboard" },
+    { path: "/monitoring", label: "Live Monitoring", icon: "monitoring" },
+    { path: "/analytics", label: "Analytics", icon: "bar_chart" },
+    { path: "/devices", label: "Devices", icon: "devices" },
+    { path: "/alerts", label: "Alerts", icon: "warning" },
+    { path: "/profile", label: "Profile", icon: "account_circle" },
+    { path: "/settings", label: "Settings", icon: "settings" },
+  ];
 
   return (
     <>
-      {/* Mobile Backdrop */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+        <div
+          className="fixed inset-0 bg-slate-950/50 z-40 md:hidden backdrop-blur-sm"
           onClick={onClose}
         />
       )}
-      
-      {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-full w-72 bg-white z-50 flex flex-col border-r border-slate-200/80 backdrop-blur-xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="p-6 flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <img
-              alt="Watwise Logo"
-              className="h-8 w-auto object-contain"
-              src="/logo.jpg"
-            />
-            <span className="font-bold text-lg text-slate-950">
-              WattWise
-            </span>
+
+      <aside
+        className={`fixed left-0 top-0 h-full w-72 bg-white/90 dark:bg-slate-950/90 z-50 flex flex-col border-r border-slate-200/80 dark:border-slate-800/90 backdrop-blur-xl transition-all duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
+        <div className="px-5 py-5 border-b border-slate-200/70 dark:border-slate-800/80">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-sky-500 to-cyan-400 shadow-lg shadow-sky-500/20">
+                <span className="material-symbols-outlined text-lg text-white">bolt</span>
+              </div>
+              <div>
+                <div className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">WattWise</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Energy Grid</div>
+              </div>
+            </div>
+            <button className="md:hidden rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={onClose}>
+              <span className="material-symbols-outlined">close</span>
+            </button>
           </div>
-          <button className="md:hidden text-slate-500 p-2" onClick={onClose}>
-            <span className="material-symbols-outlined">close</span>
-          </button>
         </div>
-        <nav
-          className="flex-1 px-card-padding mt-unit space-y-1"
-        >
-          <Link
-            to="/dashboard"
-            onClick={onClose}
-            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${isActive('/dashboard')}`}
-          >
-            <span className="material-symbols-outlined mr-3 group-hover:text-electric-blue">
-              dashboard
-            </span>
-            <span className="font-body-md">Overview</span>
-          </Link>
-          <Link
-            to="/monitoring"
-            onClick={onClose}
-            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${isActive('/monitoring')}`}
-          >
-            <span className="material-symbols-outlined mr-3 group-hover:text-vibrant-violet">
-              monitoring
-            </span>
-            <span className="font-body-md">Real-time Monitoring</span>
-          </Link>
-          <Link
-            to="/analytics"
-            onClick={onClose}
-            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${isActive('/analytics')}`}
-          >
-            <span className="material-symbols-outlined mr-3 group-hover:text-[#0EA5E9]">
-              bar_chart
-            </span>
-            <span className="font-body-md">Analytics & Reports</span>
-          </Link>
-          <Link
-            to="/devices"
-            onClick={onClose}
-            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${isActive('/devices')}`}
-          >
-            <span className="material-symbols-outlined mr-3 group-hover:text-primary">
-              devices
-            </span>
-            <span className="font-body-md">Devices</span>
-          </Link>
-          <Link
-            to="/alerts"
-            onClick={onClose}
-            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${isActive('/alerts')}`}
-          >
-            <span className="material-symbols-outlined mr-3 group-hover:text-error-red">
-              warning
-            </span>
-            <span className="font-body-md">Alerts</span>
-          </Link>
-          <Link
-            to="/profile"
-            onClick={onClose}
-            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${isActive('/profile')}`}
-          >
-            <span className="material-symbols-outlined mr-3 group-hover:text-primary">
-              account_circle
-            </span>
-            <span className="font-body-md">Profile</span>
-          </Link>
-          <Link
-            to="/settings"
-            onClick={onClose}
-            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${isActive('/settings')}`}
-          >
-            <span className="material-symbols-outlined mr-3 group-hover:text-outline">
-              settings
-            </span>
-            <span className="font-body-md">Settings</span>
-          </Link>
+
+        <nav className="flex-1 space-y-2 px-4 py-5">
+          {navItems.map(({ path, label, icon }) => (
+            <Link
+              key={path}
+              to={path}
+              onClick={onClose}
+              className={`flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${isActive(path)}`}
+            >
+              <span className="material-symbols-outlined mr-3 text-base">{icon}</span>
+              <span>{label}</span>
+            </Link>
+          ))}
+
           <button
             onClick={handleLogout}
-            className="w-full flex items-center px-4 py-3 rounded-lg transition-all duration-200 group text-slate-500 hover:bg-red-50 hover:text-red-600 font-medium"
+            className="mt-2 flex w-full items-center rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-500 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
           >
-            <span className="material-symbols-outlined mr-3 text-red-500/80 group-hover:text-red-600">
-              logout
-            </span>
-            <span className="font-body-md">Logout</span>
+            <span className="material-symbols-outlined mr-3 text-base">logout</span>
+            <span>Logout</span>
           </button>
         </nav>
-        <div className="px-6 py-6 border-t border-slate-200/80">
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-electric-blue animate-pulse shadow-[0_0_8px_rgba(14,165,233,0.8)]"></div>
-            <span className="text-label-caps font-label-caps text-slate-600 font-bold uppercase">
-              System: Optimal
-            </span>
+
+        <div className="border-t border-slate-200/80 px-4 py-4 dark:border-slate-800/80">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/80">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]">
+                <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60" />
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">System Online</span>
+            </div>
+
+            <button
+              onClick={toggleDarkMode}
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-amber-300"
+              title={isDarkMode ? "Light Mode" : "Dark Mode"}
+            >
+              <span className="material-symbols-outlined text-base">{isDarkMode ? "light_mode" : "dark_mode"}</span>
+            </button>
           </div>
         </div>
       </aside>

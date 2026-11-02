@@ -88,6 +88,8 @@ const ingestReading = async (req, res) => {
     return res.status(201).json({
       message: "Reading stored successfully.",
       powerState: device.powerState,
+      wifiSSID: device.wifiSSID || "",
+      wifiPassword: device.wifiPassword || "",
       reading,
     });
   } catch (error) {
@@ -109,6 +111,8 @@ const getIngestStatus = async (req, res) => {
     return res.status(200).json({
       powerState: device.powerState,
       powerLimit: device.powerLimit,
+      wifiSSID: device.wifiSSID || "",
+      wifiPassword: device.wifiPassword || "",
     });
   } catch (error) {
     console.error("Get ingest status error:", error);

@@ -14,6 +14,7 @@ import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import { Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 
 function ProtectedRoute({ children }) {
 
@@ -28,8 +29,8 @@ function ProtectedRoute({ children }) {
 function App() {
 
   return (
-
-    <BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
 
       <Routes>
 
@@ -109,7 +110,7 @@ function App() {
       </Routes>
 
     </BrowserRouter>
-
+  </ThemeProvider>
   );
 
 }

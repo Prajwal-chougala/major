@@ -1,0 +1,90 @@
+export const storeConfig = {
+  announcement: 'THE FIRST DROP IS ALMOST HERE.',
+  currency: 'INR',
+  checkoutUrl: '',
+  newsletterEndpoint: '',
+  contactEmail: '',
+  instagramUrl: '',
+}
+
+export const products = [
+  {
+    id: '01',
+    name: 'After Hours Tee',
+    category: 'Graphic tees',
+    price: 1890,
+    color: 'Washed black',
+    sizes: ['S', 'M', 'L', 'XL'],
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=85',
+    alt: 'Black graphic t-shirt photographed on a model',
+    note: 'SAMPLE PRODUCT · PRICE IS INDICATIVE',
+  },
+  {
+    id: '02',
+    name: 'Off Grid Oversized Tee',
+    category: 'Oversized tees',
+    price: 2190,
+    color: 'Vintage white',
+    sizes: ['S', 'M', 'L', 'XL'],
+    image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=85',
+    alt: 'Model wearing a relaxed white streetwear tee',
+    note: 'SAMPLE PRODUCT · PRICE IS INDICATIVE',
+  },
+  {
+    id: '03',
+    name: 'City Uniform Hoodie',
+    category: 'Hoodies',
+    price: 3490,
+    color: 'Concrete grey',
+    sizes: ['S', 'M', 'L', 'XL'],
+    image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=900&q=85',
+    alt: 'Grey hoodie in a minimal studio setting',
+    note: 'SAMPLE PRODUCT · PRICE IS INDICATIVE',
+  },
+  {
+    id: '04',
+    name: 'No Rules Long Sleeve',
+    category: 'Graphic tees',
+    price: 2390,
+    color: 'Ink black',
+    sizes: ['S', 'M', 'L', 'XL'],
+    image: 'https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=900&q=85',
+    alt: 'Streetwear model in a dark long-sleeve shirt',
+    note: 'SAMPLE PRODUCT · PRICE IS INDICATIVE',
+  },
+]
+
+export const categories = [
+  {
+    name: 'GRAPHIC TEES',
+    filter: 'Graphic tees',
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85',
+    alt: 'Graphic tee in a streetwear editorial',
+  },
+  {
+    name: 'OVERSIZED TEES',
+    filter: 'Oversized tees',
+    image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1000&q=85',
+    alt: 'Oversized white tee styled for the street',
+  },
+  {
+    name: 'HOODIES',
+    filter: 'Hoodies',
+    image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1000&q=85',
+    alt: 'Grey hoodie detail',
+  },
+  {
+    name: 'BOTTOMS',
+    filter: '',
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=85',
+    alt: 'Streetwear look photographed outdoors',
+    comingSoon: true,
+  },
+  {
+    name: 'ACCESSORIES',
+    filter: '',
+    image: 'https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=1000&q=85',
+    alt: 'Minimal cap accessory',
+    comingSoon: true,
+  },
+]

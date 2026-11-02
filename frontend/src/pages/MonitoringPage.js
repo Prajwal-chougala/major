@@ -86,12 +86,12 @@ function MonitoringPage() {
 
   return (
     <Layout>
-      <div className="relative bg-slate-50 min-h-screen p-6">
+      <div className="relative bg-slate-50 dark:bg-slate-950 min-h-screen p-6 transition-colors duration-300">
         <div className="flex flex-col w-full space-y-6">
           {/*  Header Section  */}
           <header className="flex justify-between items-end mb-4">
             <div>
-              <h1 className="font-display-lg text-display-lg text-slate-900 font-extrabold">
+              <h1 className="font-display-lg text-display-lg text-slate-900 dark:text-white font-extrabold">
                 Live Telemetry
               </h1>
               <p className="font-body-md text-body-md text-slate-400 font-bold mt-1 uppercase tracking-widest text-xs">
@@ -99,9 +99,9 @@ function MonitoringPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-indigo-50 rounded-full flex items-center gap-2 border border-indigo-100/50">
-                <span className="w-2 h-2 rounded-full bg-[#35259B] animate-pulse shadow-[0_0_8px_rgba(53,37,155,0.8)]"></span>
-                <span className="font-label-caps text-xs text-[#35259B] font-bold">
+              <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-full flex items-center gap-2 border border-indigo-100/50 dark:border-indigo-800/50">
+                <span className="w-2 h-2 rounded-full bg-[#35259B] dark:bg-[#818cf8] animate-pulse shadow-[0_0_8px_rgba(53,37,155,0.8)]"></span>
+                <span className="font-label-caps text-xs text-[#35259B] dark:text-[#818cf8] font-bold">
                   LIVE STREAM
                 </span>
               </div>
@@ -113,10 +113,10 @@ function MonitoringPage() {
           {/*  Instant Metrics  */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/*  Metric 1  */}
-            <div className="relative overflow-hidden bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm group">
+            <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm group transition-colors duration-300">
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#0EA5E9]/5 rounded-full blur-3xl group-hover:bg-[#0EA5E9]/10 transition-all duration-500"></div>
               <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="flex items-center gap-2 text-slate-500">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                   <span className="material-symbols-outlined text-[20px]">
                     bolt
                   </span>
@@ -124,13 +124,13 @@ function MonitoringPage() {
                     TOTAL LOAD
                   </span>
                 </div>
-                <span className="px-2.5 py-0.5 bg-red-50 text-red-600 rounded-full text-[10px] font-bold border border-red-200/50">
+                <span className="px-2.5 py-0.5 bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 rounded-full text-[10px] font-bold border border-red-200/50 dark:border-red-900/50">
                   PEAK
                 </span>
               </div>
               <div className="relative z-10 flex items-baseline gap-2">
                 <span
-                  className="font-display-lg text-display-lg text-slate-900 font-extrabold"
+                  className="font-display-lg text-display-lg text-slate-900 dark:text-white font-extrabold"
                   id="total-load"
                 >
                   {insights?.totalPower || 0.0}
@@ -139,7 +139,7 @@ function MonitoringPage() {
                   kW
                 </span>
               </div>
-              <div className="mt-4 flex items-center gap-2 text-sm text-slate-500 relative z-10 font-medium">
+              <div className="mt-4 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 relative z-10 font-medium">
                 <span className="material-symbols-outlined text-red-500 text-[16px] font-bold">
                   arrow_upward
                 </span>
@@ -147,10 +147,10 @@ function MonitoringPage() {
               </div>
             </div>
             {/*  Metric 2  */}
-            <div className="relative overflow-hidden bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm group">
+            <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm group transition-colors duration-300">
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#35259B]/5 rounded-full blur-3xl group-hover:bg-[#35259B]/10 transition-all duration-500"></div>
               <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="flex items-center gap-2 text-slate-500">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                   <span className="material-symbols-outlined text-[20px]">
                     electric_meter
                   </span>
@@ -161,24 +161,24 @@ function MonitoringPage() {
               </div>
               <div className="relative z-10 flex items-baseline gap-2">
                 <span
-                  className="font-display-lg text-display-lg text-slate-900 font-extrabold"
+                  className="font-display-lg text-display-lg text-slate-900 dark:text-white font-extrabold"
                   id="voltage"
                 >
                   {insights?.voltage || 238}
                 </span>
-                <span className="text-xl font-semibold text-[#35259B]">
+                <span className="text-xl font-semibold text-[#35259B] dark:text-[#818cf8]">
                   V
                 </span>
               </div>
-              <div className="mt-5 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden relative z-10">
-                <div className="h-full bg-[#35259B] w-[85%] rounded-full shadow-[0_0_10px_rgba(53,37,155,0.4)]"></div>
+              <div className="mt-5 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative z-10">
+                <div className="h-full bg-[#35259B] dark:bg-[#818cf8] w-[85%] rounded-full shadow-[0_0_10px_rgba(53,37,155,0.4)]"></div>
               </div>
             </div>
             {/*  Metric 3  */}
-            <div className="relative overflow-hidden bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm group">
+            <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm group transition-colors duration-300">
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#0EA5E9]/5 rounded-full blur-3xl group-hover:bg-[#0EA5E9]/10 transition-all duration-500"></div>
               <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="flex items-center gap-2 text-slate-500">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                   <span className="material-symbols-outlined text-[20px]">
                     waves
                   </span>
@@ -190,7 +190,7 @@ function MonitoringPage() {
               </div>
               <div className="relative z-10 flex items-baseline gap-2">
                 <span
-                  className="font-display-lg text-display-lg text-slate-900 font-extrabold"
+                  className="font-display-lg text-display-lg text-slate-900 dark:text-white font-extrabold"
                   id="frequency"
                 >
                   {insights?.frequency || '60.0'}
@@ -199,8 +199,8 @@ function MonitoringPage() {
                   Hz
                 </span>
               </div>
-              <div className="mt-4 flex items-center gap-2 text-sm text-green-600 relative z-10 font-bold">
-                <span className="material-symbols-outlined text-green-600 text-[16px]">
+              <div className="mt-4 flex items-center gap-2 text-sm text-green-600 dark:text-green-400 relative z-10 font-bold">
+                <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-[16px]">
                   check_circle
                 </span>
                 <span>Stable</span>
@@ -209,18 +209,18 @@ function MonitoringPage() {
           </div>
           {/*  Individual Device Streams  */}
           <div>
-            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-              <h2 className="font-headline-lg text-headline-lg text-slate-900 font-bold">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <h2 className="font-headline-lg text-headline-lg text-slate-900 dark:text-white font-bold">
                 Device Telemetry Streams
               </h2>
-              <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                <button className="px-3 py-1 rounded-lg bg-white text-slate-800 text-xs font-bold shadow-sm">
+              <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                <button className="px-3 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-xs font-bold shadow-sm">
                   1H
                 </button>
-                <button className="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900 text-xs font-bold transition-all">
+                <button className="px-3 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition-all">
                   6H
                 </button>
-                <button className="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900 text-xs font-bold transition-all">
+                <button className="px-3 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition-all">
                   24H
                 </button>
               </div>
@@ -232,30 +232,30 @@ function MonitoringPage() {
                 const icon = index % 4 === 0 ? 'ac_unit' : index % 4 === 1 ? 'ev_charger' : index % 4 === 2 ? 'water_ph' : 'dns';
                 
                 return (
-                  <div key={device.deviceId} className={`bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col group`}>
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-50/20 via-transparent to-transparent opacity-50 pointer-events-none"></div>
+                  <div key={device.deviceId} className={`bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col group`}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-50/20 dark:from-slate-800/20 via-transparent to-transparent opacity-50 pointer-events-none"></div>
                     
                     <div className="flex justify-between items-start mb-6 relative z-10">
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200/60 shadow-sm transition-all ${device.powerState === 'ON' ? 'bg-indigo-50 border-indigo-100 text-[#35259B] shadow-[0_0_15px_rgba(53,37,155,0.15)]' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                        <div className={`w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-200/60 dark:border-slate-700 shadow-sm transition-all ${device.powerState === 'ON' ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-100 dark:border-indigo-800 text-[#35259B] dark:text-[#818cf8] shadow-[0_0_15px_rgba(53,37,155,0.15)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
                           <span className="material-symbols-outlined text-[24px]">
                             {icon}
                           </span>
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900 leading-tight">
+                          <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight">
                             {device.name}
                           </h3>
                           <div className="flex flex-col mt-1">
                             <div className="flex items-baseline gap-1.5">
-                              <span className={`font-mono font-extrabold text-xl ${device.powerState === 'ON' ? 'text-[#35259B]' : 'text-slate-400'}`}>
+                              <span className={`font-mono font-extrabold text-xl ${device.powerState === 'ON' ? 'text-[#35259B] dark:text-[#818cf8]' : 'text-slate-400'}`}>
                                 {(device.energyKWh || 0).toFixed(2)}
                               </span>
                               <span className="text-xs font-semibold text-slate-400">kWh today</span>
                             </div>
                             {device.powerLimit && (
                               <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-                                LIMIT: {device.powerLimit} kWh
+                                POWER LIMIT: {device.powerLimit} W
                               </div>
                             )}
                           </div>
@@ -269,7 +269,7 @@ function MonitoringPage() {
                           className="sr-only peer"
                           type="checkbox"
                         />
-                        <div className="w-14 h-7 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[#35259B] shadow-inner border border-slate-300"></div>
+                        <div className="w-14 h-7 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[#35259B] dark:peer-checked:bg-indigo-600 shadow-inner border border-slate-300 dark:border-slate-600"></div>
                       </label>
                     </div>
                     
@@ -289,7 +289,8 @@ function MonitoringPage() {
                           <path
                             d="M0,39 L100,39"
                             fill="none"
-                            stroke="#e2e8f0"
+                            stroke="currentColor"
+                            className="text-slate-200 dark:text-slate-800"
                             strokeWidth="1"
                             strokeDasharray="4 4"
                           ></path>

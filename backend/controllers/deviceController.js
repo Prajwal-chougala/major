@@ -4,7 +4,16 @@ const { clearAutoOffTimer } = require("../services/alertService");
 // Create a new device
 const createDevice = async (req, res) => {
   try {
-    const { deviceId, name, location, powerLimit, autoOffMinutes, alertPhone } = req.body;
+    const {
+      deviceId,
+      name,
+      location,
+      powerLimit,
+      autoOffMinutes,
+      alertPhone,
+      wifiSSID,
+      wifiPassword,
+    } = req.body;
 
     if (!deviceId || !name) {
       return res.status(400).json({
@@ -32,6 +41,8 @@ const createDevice = async (req, res) => {
       autoOffMinutes:
         autoOffMinutes !== undefined ? Number(autoOffMinutes) : null,
       alertPhone: alertPhone ? alertPhone.trim() : "",
+      wifiSSID: wifiSSID ? wifiSSID.trim() : "",
+      wifiPassword: wifiPassword || "",
     });
 
     return res.status(201).json({
@@ -104,7 +115,15 @@ const getDeviceById = async (req, res) => {
 const updateDevice = async (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { name, location, powerLimit, autoOffMinutes, alertPhone } = req.body;
+    const {
+      name,
+      location,
+      powerLimit,
+      autoOffMinutes,
+      alertPhone,
+      wifiSSID,
+      wifiPassword,
+    } = req.body;
 
     const device = await Device.findOne({
       deviceId,
@@ -138,6 +157,14 @@ const updateDevice = async (req, res) => {
       device.alertPhone = alertPhone ? alertPhone.trim() : "";
     }
 
+    if (wifiSSID !== undefined) {
+      device.wifiSSID = wifiSSID ? wifiSSID.trim() : "";
+    }
+
+    if (wifiPassword !== undefined) {
+      device.wifiPassword = wifiPassword;
+    }
+
     await device.save();
 
     return res.status(200).json({
@@ -149,6 +176,52 @@ const updateDevice = async (req, res) => {
 
     return res.status(500).json({
       message: "Unable to update device.",
+    });
+  }
+};
+
+// Dedicated endpoint to update Wi-Fi credentials for an ESP32 device
+const updateDeviceWifi = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { wifiSSID, wifiPassword } = req.body;
+
+    if (!wifiSSID) {
+      return res.status(400).json({
+        message: "Wi-Fi SSID (network name) is required.",
+      });
+    }
+
+    const device = await Device.findOne({
+      deviceId,
+      owner: req.user.userId,
+    });
+
+    if (!device) {
+      return res.status(404).json({
+        message: "Device not found.",
+      });
+    }
+
+    device.wifiSSID = wifiSSID.trim();
+    device.wifiPassword = wifiPassword !== undefined ? wifiPassword : "";
+
+    await device.save();
+
+    return res.status(200).json({
+      message: `Wi-Fi credentials updated for "${device.name}". The device will automatically fetch them on its next sync.`,
+      device: {
+        deviceId: device.deviceId,
+        name: device.name,
+        wifiSSID: device.wifiSSID,
+        wifiPassword: device.wifiPassword,
+      },
+    });
+  } catch (error) {
+    console.error("Update device Wi-Fi error:", error);
+
+    return res.status(500).json({
+      message: "Unable to update Wi-Fi credentials.",
     });
   }
 };
@@ -316,28 +389,41 @@ const testDeviceAlert = async (req, res) => {
       });
     }
 
-    const { sendWhatsAppAlert } = require("../utils/notify");
+    const { sendWhatsAppAlert, getWhatsAppLink } = require("../utils/notify");
     const testMsg =
       `⚡ *WattWise Real-Time Alert Test!*\n\n` +
       `Device: *${device.name}*\n` +
       `Location: *${device.location || "Default"}*\n` +
       `Current Status: *${device.status.toUpperCase()}* (${device.powerState})\n` +
-      `Daily Energy Limit: *${device.powerLimit || 1000} kWh*\n` +
+      `Power Limit: *${device.powerLimit || 1000} W*\n` +
       `Configured Alert Recipient: *${targetPhone}*\n\n` +
       `✅ Your real-time alert sending system is online and functioning!`;
 
     const result = await sendWhatsAppAlert(targetPhone, testMsg);
 
-    return res.status(200).json({
-      message: `Test WhatsApp alert dispatched to ${targetPhone}.`,
-      targetPhone,
-      result,
-    });
+    if (result.sent) {
+      return res.status(200).json({
+        success: true,
+        message: `Alert dispatched instantly via Twilio Cloud API to ${targetPhone}! (SID: ${result.sid})`,
+        targetPhone,
+        sid: result.sid,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: result.reason || "Unable to dispatch message via Twilio.",
+        targetPhone,
+        reason: result.reason,
+        waLink: getWhatsAppLink(targetPhone, testMsg),
+        testMsg,
+      });
+    }
   } catch (error) {
     console.error("Test device alert error:", error);
 
     return res.status(500).json({
-      message: "Unable to send test alert.",
+      success: false,
+      message: error.message || "Unable to send test alert.",
     });
   }
 };
@@ -352,4 +438,5 @@ module.exports = {
   turnOffDevice,
   regenerateApiKey,
   testDeviceAlert,
+  updateDeviceWifi,
 };

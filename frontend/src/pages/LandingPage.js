@@ -1,19 +1,22 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
 
 function LandingPage() {
+  const { isDarkMode, toggleDarkMode } = useTheme();
+
   return (
-    <div className="bg-slate-50 font-inter text-slate-700 min-h-screen">
+    <div className="bg-slate-50 dark:bg-slate-950 font-inter text-slate-700 dark:text-slate-200 min-h-screen transition-colors duration-300">
       {/* Navigation Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200/60 shadow-sm transition-all duration-300">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800 shadow-sm transition-colors duration-300">
         <div className="h-20 w-full px-6 flex items-center justify-between mx-auto max-w-7xl">
           <div className="flex items-center gap-3">
             <img
               alt="Watwise Logo"
-              className="h-8 w-auto object-contain"
+              className="h-8 w-auto object-contain rounded-lg"
               src="/logo.jpg"
             />
-            <span className="font-bold text-xl text-slate-950 tracking-tight">
+            <span className="font-bold text-xl text-slate-950 dark:text-white tracking-tight">
               WattWise
             </span>
           </div>
@@ -26,26 +29,37 @@ function LandingPage() {
               Home
             </Link>
             <a
-              className="text-slate-500 hover:text-slate-900 transition-colors"
+              className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
               href="#features"
             >
               Features
             </a>
             <a
-              className="text-slate-500 hover:text-slate-900 transition-colors"
+              className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
               href="#savings"
             >
               Savings
             </a>
             <a
-              className="text-slate-500 hover:text-slate-900 transition-colors"
+              className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
               href="#contact"
             >
               Contact
             </a>
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleDarkMode}
+              className="flex items-center justify-center w-9 h-9 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:scale-105 active:scale-95 transition-all shadow-sm"
+              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              <span className="material-symbols-outlined text-[19px]">
+                {isDarkMode ? 'light_mode' : 'dark_mode'}
+              </span>
+            </button>
+
             <Link 
               to="/auth?mode=signup" 
               className="hidden sm:block px-6 py-2 bg-gradient-to-r from-[#35259B] to-[#0EA5E9] hover:from-[#2143B8] hover:to-[#0EA5E9] text-white font-semibold text-sm rounded-full shadow-md shadow-sky-500/10 hover:shadow-sky-500/25 transition-all duration-300 active:scale-95"
@@ -54,7 +68,7 @@ function LandingPage() {
             </Link>
             <Link 
               to="/auth" 
-              className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-all"
+              className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white transition-all"
             >
               <span className="material-symbols-outlined text-[20px]">
                 person
@@ -65,13 +79,13 @@ function LandingPage() {
       </header>
 
       {/* Main Content */}
-      <main className="w-full pt-20 bg-slate-50">
+      <main className="w-full pt-20 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="flex flex-col w-full relative overflow-hidden">
           
           {/* Ambient Background Blobs */}
           <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#0EA5E9]/5 blur-[120px]"></div>
-            <div className="absolute bottom-[20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#35259B]/5 blur-[150px]"></div>
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#0EA5E9]/5 dark:bg-[#0EA5E9]/10 blur-[120px]"></div>
+            <div className="absolute bottom-[20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#35259B]/5 dark:bg-[#35259B]/10 blur-[150px]"></div>
           </div>
 
           {/* Hero Section */}
@@ -79,22 +93,22 @@ function LandingPage() {
             <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative">
               
               {/* Left Column Text */}
-              <div className="lg:col-span-6 flex flex-col gap-6 relative z-20">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100/50 w-fit">
+              <div className="lg:col-span-6 flex flex-col gap-6 relative z-20 animate-slide-up">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100/50 dark:border-indigo-800/50 w-fit animate-fade-in">
                   <span className="w-2 h-2 rounded-full bg-[#0EA5E9] animate-pulse shadow-[0_0_8px_rgba(14,165,233,0.8)]"></span>
-                  <span className="font-mono text-xs font-bold text-[#35259B] tracking-wider uppercase">
+                  <span className="font-mono text-xs font-bold text-[#35259B] dark:text-[#818cf8] tracking-wider uppercase">
                     System Online
                   </span>
                 </div>
                 
-                <h1 className="font-extrabold text-4xl sm:text-5xl lg:text-6xl text-slate-900 leading-[1.1] tracking-tight">
+                <h1 className="font-extrabold text-4xl sm:text-5xl lg:text-6xl text-slate-900 dark:text-white leading-[1.1] tracking-tight">
                   Powering the <br />
                   <span className="text-brand-gradient">
                     Future of Your Home
                   </span>
                 </h1>
                 
-                <p className="text-slate-500 text-base sm:text-lg max-w-xl leading-relaxed">
+                <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg max-w-xl leading-relaxed">
                   Real-time energy monitoring with AI-driven insights to save you money and power. Gain total, unified visibility into your home appliance consumption.
                 </p>
                 
@@ -110,7 +124,7 @@ function LandingPage() {
                   </Link>
                   <Link 
                     to="/auth" 
-                    className="px-8 py-4 bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:bg-slate-100 hover:border-slate-300 font-bold text-sm tracking-wider uppercase rounded-full transition-all duration-200 active:scale-95 shadow-sm"
+                    className="px-8 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 font-bold text-sm tracking-wider uppercase rounded-full transition-all duration-200 active:scale-95 shadow-sm"
                   >
                     View Demo
                   </Link>
@@ -118,24 +132,24 @@ function LandingPage() {
               </div>
 
               {/* Right Column App Hologram Card */}
-              <div className="lg:col-span-6 relative">
-                <div className="relative w-full aspect-square sm:aspect-[4/3] lg:aspect-square rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80 bg-white p-2">
+              <div className="lg:col-span-6 relative animate-scale-in">
+                <div className="relative w-full aspect-square sm:aspect-[4/3] lg:aspect-square rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-2">
                   <img
                     alt="Smart Home Dashboard Hologram"
                     className="w-full h-full object-cover rounded-2xl opacity-90"
                     src="/dashboard-hologram.jpg"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent pointer-events-none rounded-2xl"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/80 dark:from-slate-950/80 via-transparent to-transparent pointer-events-none rounded-2xl"></div>
                   
                   {/* Floating Metric Badge */}
-                  <div className="absolute bottom-6 left-6 right-6 p-5 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl flex items-center justify-between shadow-lg">
+                  <div className="absolute bottom-6 left-6 right-6 p-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800 rounded-2xl flex items-center justify-between shadow-lg">
                     <div className="flex flex-col">
-                      <span className="font-mono text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                         Current Load
                       </span>
-                      <span className="text-3xl font-extrabold text-slate-900 mt-1">
+                      <span className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
                         2.4{" "}
-                        <span className="text-base font-semibold text-slate-500">
+                        <span className="text-base font-semibold text-slate-500 dark:text-slate-400">
                           kW
                         </span>
                       </span>
@@ -147,7 +161,7 @@ function LandingPage() {
                         viewBox="0 0 36 36"
                       >
                         <path
-                          className="text-slate-100"
+                          className="text-slate-100 dark:text-slate-800"
                           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                           fill="none"
                           stroke="currentColor"
@@ -175,63 +189,63 @@ function LandingPage() {
           </section>
 
           {/* Features Section */}
-          <section id="features" className="w-full py-20 px-6 relative z-10 bg-white border-y border-slate-200/50">
+          <section id="features" className="w-full py-20 px-6 relative z-10 bg-white dark:bg-slate-900/50 border-y border-slate-200/50 dark:border-slate-800 transition-colors duration-300">
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-16">
-                <span className="text-[#0EA5E9] font-bold text-xs uppercase tracking-widest bg-sky-50 px-3 py-1 rounded-full">
+                <span className="text-[#0EA5E9] font-bold text-xs uppercase tracking-widest bg-sky-50 dark:bg-sky-950/60 px-3 py-1 rounded-full border border-sky-100/50 dark:border-sky-800/50">
                   FEATURES
                 </span>
-                <h2 className="font-extrabold text-3xl sm:text-4xl text-slate-900 mt-4 mb-3">
+                <h2 className="font-extrabold text-3xl sm:text-4xl text-slate-900 dark:text-white mt-4 mb-3">
                   Intelligent Control
                 </h2>
-                <p className="text-slate-500 text-base max-w-xl mx-auto leading-relaxed">
+                <p className="text-slate-500 dark:text-slate-400 text-base max-w-xl mx-auto leading-relaxed">
                   Precision tools designed for modern energy management, utilizing advanced algorithms to optimize your home's power grid.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Feature 1 */}
-                <div className="group p-8 bg-slate-50 hover:bg-white border border-slate-100 hover:border-slate-200 rounded-3xl transition-all duration-300 relative overflow-hidden hover:shadow-lg shadow-sm">
-                  <div className="w-12 h-12 rounded-2xl bg-sky-50 text-[#0EA5E9] flex items-center justify-center mb-6 border border-sky-100/50 relative z-10 group-hover:scale-110 transition-transform duration-300">
+                <div className="group p-8 bg-slate-50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 rounded-3xl transition-all duration-300 relative overflow-hidden hover:shadow-xl hover:-translate-y-1.5 shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 text-[#0EA5E9] flex items-center justify-center mb-6 border border-sky-100/50 dark:border-sky-800/50 relative z-10 group-hover:scale-110 transition-transform duration-300">
                     <span className="material-symbols-outlined text-[24px]">
                       speed
                     </span>
                   </div>
-                  <h3 className="font-bold text-lg text-slate-900 mb-3 relative z-10">
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-3 relative z-10">
                     Real-time Monitoring
                   </h3>
-                  <p className="text-slate-500 text-sm leading-relaxed relative z-10">
+                  <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed relative z-10">
                     Visualize power consumption down to the millisecond. Identify energy hogs instantly with dynamic load tracking and status reports.
                   </p>
                 </div>
 
                 {/* Feature 2 */}
-                <div className="group p-8 bg-slate-50 hover:bg-white border border-slate-100 hover:border-slate-200 rounded-3xl transition-all duration-300 relative overflow-hidden hover:shadow-lg shadow-sm">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#35259B] flex items-center justify-center mb-6 border border-indigo-100/50 relative z-10 group-hover:scale-110 transition-transform duration-300">
+                <div className="group p-8 bg-slate-50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 rounded-3xl transition-all duration-300 relative overflow-hidden hover:shadow-xl hover:-translate-y-1.5 shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-[#35259B] dark:text-[#818cf8] flex items-center justify-center mb-6 border border-indigo-100/50 dark:border-indigo-800/50 relative z-10 group-hover:scale-110 transition-transform duration-300">
                     <span className="material-symbols-outlined text-[24px]">
                       psychology
                     </span>
                   </div>
-                  <h3 className="font-bold text-lg text-slate-900 mb-3 relative z-10">
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-3 relative z-10">
                     AI Insights
                   </h3>
-                  <p className="text-slate-500 text-sm leading-relaxed relative z-10">
+                  <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed relative z-10">
                     Predictive modeling learns your household habits to automatically suggest optimizations and shift heavy loads to off-peak hours.
                   </p>
                 </div>
 
                 {/* Feature 3 */}
-                <div className="group p-8 bg-slate-50 hover:bg-white border border-slate-100 hover:border-slate-200 rounded-3xl transition-all duration-300 relative overflow-hidden hover:shadow-lg shadow-sm">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-6 border border-amber-100/50 relative z-10 group-hover:scale-110 transition-transform duration-300">
+                <div className="group p-8 bg-slate-50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 rounded-3xl transition-all duration-300 relative overflow-hidden hover:shadow-xl hover:-translate-y-1.5 shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center mb-6 border border-amber-100/50 dark:border-amber-800/50 relative z-10 group-hover:scale-110 transition-transform duration-300">
                     <span className="material-symbols-outlined text-[24px]">
                       notifications_active
                     </span>
                   </div>
-                  <h3 className="font-bold text-lg text-slate-900 mb-3 relative z-10">
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-3 relative z-10">
                     Smart Alerts
                   </h3>
-                  <p className="text-slate-500 text-sm leading-relaxed relative z-10">
-                    Receive proactive mobile SMS notifications for abnormal usage patterns, preventing expensive surprises before your billing cycle ends.
+                  <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed relative z-10">
+                    Receive proactive mobile SMS and WhatsApp notifications for abnormal usage patterns, preventing expensive surprises before your billing cycle ends.
                   </p>
                 </div>
               </div>
@@ -239,22 +253,22 @@ function LandingPage() {
           </section>
 
           {/* Savings Graph Section */}
-          <section id="savings" className="w-full py-20 px-6 relative z-10 bg-slate-50">
+          <section id="savings" className="w-full py-20 px-6 relative z-10 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
               
               {/* Savings graphic box (left) */}
-              <div className="order-2 lg:order-1 relative h-[380px] w-full p-8 bg-white border border-slate-200 rounded-3xl shadow-xl flex flex-col justify-end">
+              <div className="order-2 lg:order-1 relative h-[380px] w-full p-8 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xl flex flex-col justify-end transition-all">
                 <div className="absolute top-8 left-8">
                   <span className="font-mono text-xs font-bold text-slate-400 block mb-1">
                     MONTHLY SAVINGS
                   </span>
-                  <span className="text-3xl font-extrabold text-[#35259B] drop-shadow-[0_0_12px_rgba(53,37,155,0.1)]">
+                  <span className="text-3xl font-extrabold text-[#35259B] dark:text-[#818cf8] drop-shadow-[0_0_12px_rgba(53,37,155,0.1)]">
                     ₹2,850
                   </span>
                 </div>
                 
                 {/* Bar Graph UI mockup */}
-                <div className="w-full h-44 flex items-end justify-between gap-3.5 border-b border-slate-100 pb-4">
+                <div className="w-full h-44 flex items-end justify-between gap-3.5 border-b border-slate-100 dark:border-slate-800 pb-4">
                   <div className="w-full bg-[#0EA5E9]/20 rounded-t-lg h-[30%] relative group hover:bg-[#0EA5E9]/40 transition-colors">
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 font-mono text-[10px] text-[#0EA5E9] font-bold">
                       Mar
@@ -284,13 +298,13 @@ function LandingPage() {
 
               {/* Text content (right) */}
               <div className="order-1 lg:order-2 flex flex-col gap-6">
-                <span className="text-[#35259B] font-bold text-xs uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full w-fit">
+                <span className="text-[#35259B] dark:text-[#818cf8] font-bold text-xs uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100/50 dark:border-indigo-800/50 px-3 py-1 rounded-full w-fit">
                   SAVINGS IMPACT
                 </span>
-                <h2 className="font-extrabold text-3xl sm:text-4xl text-slate-900 leading-tight">
+                <h2 className="font-extrabold text-3xl sm:text-4xl text-slate-900 dark:text-white leading-tight">
                   Measurable Impact.
                 </h2>
-                <p className="text-slate-500 leading-relaxed text-base">
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-base">
                   Our users see an average reduction of 24% in their monthly utility bills within the first 90 days. The analytics data speaks for itself.
                 </p>
                 
@@ -299,7 +313,7 @@ function LandingPage() {
                     <span className="material-symbols-outlined text-[#0EA5E9] text-[20px] font-bold">
                       check_circle
                     </span>
-                    <span className="font-semibold text-slate-700 text-sm sm:text-base">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200 text-sm sm:text-base">
                       Identify phantom loads automatically
                     </span>
                   </li>
@@ -307,7 +321,7 @@ function LandingPage() {
                     <span className="material-symbols-outlined text-[#0EA5E9] text-[20px] font-bold">
                       check_circle
                     </span>
-                    <span className="font-semibold text-slate-700 text-sm sm:text-base">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200 text-sm sm:text-base">
                       Optimize solar battery storage cycles
                     </span>
                   </li>
@@ -315,7 +329,7 @@ function LandingPage() {
                     <span className="material-symbols-outlined text-[#0EA5E9] text-[20px] font-bold">
                       check_circle
                     </span>
-                    <span className="font-semibold text-slate-700 text-sm sm:text-base">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200 text-sm sm:text-base">
                       Detailed tax rebate and utility reporting
                     </span>
                   </li>
@@ -353,17 +367,17 @@ function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full bg-slate-100 border-t border-slate-200 py-16 mt-10">
+      <footer className="w-full bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-16 mt-10 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
           
           <div className="col-span-1">
             <div className="flex items-center gap-3 mb-6">
               <img
                 alt="Watwise Logo"
-                className="h-6 w-auto object-contain"
+                className="h-6 w-auto object-contain rounded"
                 src="/logo.jpg"
               />
-              <span className="font-bold text-base text-slate-900 tracking-tight">
+              <span className="font-bold text-base text-slate-900 dark:text-white tracking-tight">
                 WattWise
               </span>
             </div>
@@ -373,27 +387,27 @@ function LandingPage() {
           </div>
 
           <div className="flex flex-col gap-3.5">
-            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-widest mb-2">
+            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-2">
               Resources
             </h4>
-            <a className="text-slate-500 hover:text-[#0EA5E9] text-xs transition-colors" href="#features">Support</a>
-            <a className="text-slate-500 hover:text-[#0EA5E9] text-xs transition-colors" href="#features">API Reference</a>
+            <a className="text-slate-500 dark:text-slate-400 hover:text-[#0EA5E9] dark:hover:text-[#0EA5E9] text-xs transition-colors" href="#features">Support</a>
+            <a className="text-slate-500 dark:text-slate-400 hover:text-[#0EA5E9] dark:hover:text-[#0EA5E9] text-xs transition-colors" href="#features">API Reference</a>
           </div>
 
           <div className="flex flex-col gap-3.5">
-            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-widest mb-2">
+            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-2">
               Legal
             </h4>
-            <a className="text-slate-500 hover:text-[#0EA5E9] text-xs transition-colors" href="#features">Privacy Policy</a>
-            <a className="text-slate-500 hover:text-[#0EA5E9] text-xs transition-colors" href="#features">Terms of Service</a>
+            <a className="text-slate-500 dark:text-slate-400 hover:text-[#0EA5E9] dark:hover:text-[#0EA5E9] text-xs transition-colors" href="#features">Privacy Policy</a>
+            <a className="text-slate-500 dark:text-slate-400 hover:text-[#0EA5E9] dark:hover:text-[#0EA5E9] text-xs transition-colors" href="#features">Terms of Service</a>
           </div>
 
           <div className="flex flex-col gap-3.5">
-            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-widest mb-2">
+            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-2">
               Social
             </h4>
             <div className="flex gap-4">
-              <a className="text-slate-400 hover:text-[#35259B] transition-colors" href="#share">
+              <a className="text-slate-400 hover:text-[#35259B] dark:hover:text-[#818cf8] transition-colors" href="#share">
                 <span className="material-symbols-outlined text-[20px]">share</span>
               </a>
               <a className="text-slate-400 hover:text-[#0EA5E9] transition-colors" href="#global">
@@ -404,7 +418,7 @@ function LandingPage() {
 
         </div>
         
-        <div className="max-w-7xl mx-auto px-6 mt-12 pt-8 border-t border-slate-200/50 text-center">
+        <div className="max-w-7xl mx-auto px-6 mt-12 pt-8 border-t border-slate-200/50 dark:border-slate-800 text-center">
           <p className="text-slate-400 text-[11px]">
             &copy; {new Date().getFullYear()} WattWise Intelligence. All rights reserved.
           </p>

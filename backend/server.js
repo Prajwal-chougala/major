@@ -16,6 +16,7 @@ const energyChartRoutes = require("./routes/energyChartRoutes");
 const powerChartRoutes = require("./routes/powerChartRoutes");
 const alertRoutes = require("./routes/alertRoutes");
 const ingestRoutes = require("./routes/ingestRoutes");
+const settingsRoutes = require("./routes/settingsRoutes");
 const Device = require("./models/Device");
 
 const app = express();
@@ -66,6 +67,7 @@ app.use("/energy/chart", energyChartRoutes);
 app.use("/power/chart", powerChartRoutes);
 app.use("/alerts", alertRoutes);
 app.use("/ingest", ingestRoutes);
+app.use("/settings", settingsRoutes);
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {

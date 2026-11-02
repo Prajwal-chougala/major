@@ -103,7 +103,7 @@ const createReading = async (req, res) => {
     await device.save();
 
     // Evaluate the new reading for threshold/limit alerts (SMS + auto-off
-    // if the device has a configured powerLimit). Errors here are logged
+    // if it exceeds the device's configured powerLimit in watts). Errors are logged
     // internally and never fail the reading write itself.
     await createReadingAlerts({ reading, device });
 

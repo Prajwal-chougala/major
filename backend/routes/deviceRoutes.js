@@ -12,6 +12,7 @@ const {
   turnOffDevice,
   regenerateApiKey,
   testDeviceAlert,
+  updateDeviceWifi,
 } = require("../controllers/deviceController");
 
 const authenticate = require("../middleware/authMiddleware");
@@ -28,6 +29,9 @@ router.get("/:deviceId", authenticate, getDeviceById);
 
 // Update device
 router.put("/:deviceId", authenticate, updateDevice);
+
+// Update Wi-Fi credentials for ESP32
+router.put("/:deviceId/wifi", authenticate, updateDeviceWifi);
 
 // Delete device
 router.delete("/:deviceId", authenticate, deleteDevice);

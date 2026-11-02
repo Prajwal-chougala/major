@@ -51,8 +51,8 @@ const deviceSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Power threshold in kWh for daily energy limit. When a reading causes daily
-    // cumulative energy to exceed this, an alert + SMS fires and an auto-off starts.
+    // Instantaneous power threshold in watts. Readings above this trigger alerts
+    // and start the auto-off countdown.
     powerLimit: {
       type: Number,
       default: null,
@@ -91,11 +91,23 @@ const deviceSchema = new mongoose.Schema(
       default: "ON",
     },
 
-    // Specific phone/WhatsApp number designated to receive alerts for this device.
+    // Specific phone number designated to receive SMS and WhatsApp alerts.
     // If not set, falls back to the account owner's mobile number.
     alertPhone: {
       type: String,
       trim: true,
+      default: "",
+    },
+
+    // Wi-Fi credentials for the ESP32 to connect through
+    wifiSSID: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    wifiPassword: {
+      type: String,
       default: "",
     },
   },

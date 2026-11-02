@@ -68,8 +68,24 @@ const register = async (req, res) => {
   } catch (error) {
     console.error("Register error:", error);
 
+    if (error.code === 11000) {
+      if (error.keyPattern?.email) {
+        return res.status(409).json({
+          message: "An account with this email already exists.",
+        });
+      }
+      if (error.keyPattern?.mobile) {
+        return res.status(409).json({
+          message: "An account with this mobile number already exists.",
+        });
+      }
+      return res.status(409).json({
+        message: "Email or mobile number is already registered.",
+      });
+    }
+
     return res.status(500).json({
-      message: "Unable to create account.",
+      message: error.message || "Unable to create account.",
     });
   }
 };
