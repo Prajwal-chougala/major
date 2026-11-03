@@ -245,7 +245,7 @@ function LandingPage() {
                     Smart Alerts
                   </h3>
                   <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed relative z-10">
-                    Receive proactive mobile SMS and WhatsApp notifications for abnormal usage patterns, preventing expensive surprises before your billing cycle ends.
+                    Receive an appliance-specific SMS when its measured power reaches or exceeds the configured limit.
                   </p>
                 </div>
               </div>

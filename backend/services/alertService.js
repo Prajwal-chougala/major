@@ -1,7 +1,7 @@
 const Alert = require("../models/Alert");
 const Device = require("../models/Device");
 const User = require("../models/User");
-const { sendSmsAlert, sendWhatsAppAlert } = require("../utils/notify");
+const { sendSmsAlert } = require("../utils/notify");
 
 const POWER_WARNING_KW = 1.0;
 const POWER_DANGER_KW = 2.0;
@@ -38,14 +38,16 @@ const dispatchSmsAlert = (device, mobile, message) => {
     });
 };
 
-// If the latest power reading exceeds the device's watt limit, alert once and
-// schedule an auto turn-off unless the reading falls or the user turns it off.
+// If the latest reading reaches the device's watt limit, alert once and start
+// the auto-off countdown until the reading falls or the user turns it off.
 const checkPowerLimit = async ({ reading, device }) => {
   const powerW = Number(reading.power);
+  const powerLimitW = Number(device.powerLimit);
   if (
     device.powerLimit == null ||
     !Number.isFinite(powerW) ||
-    powerW <= device.powerLimit
+    !Number.isFinite(powerLimitW) ||
+    powerW < powerLimitW
   ) {
     clearAutoOffTimer(device._id);
     return;
@@ -65,10 +67,10 @@ const checkPowerLimit = async ({ reading, device }) => {
     device: device._id,
     deviceId: device.deviceId,
     type: "danger",
-    title: "Power Limit exceeded",
-    message: `${device.name} is consuming ${powerW.toFixed(
+    title: "Power limit reached",
+    message: `${device.name} has reached or exceeded its ${powerLimitW} W power limit (current usage: ${powerW.toFixed(
       1
-    )} W, above its ${device.powerLimit} W limit. It will auto turn OFF in ${minutes} min unless the power drops or it is turned off sooner.`,
+    )} W). It will automatically turn OFF in ${minutes} min if usage stays at or above the limit.`,
     severity: "critical",
     isRead: false,
   });
@@ -78,22 +80,17 @@ const checkPowerLimit = async ({ reading, device }) => {
     device.alertPhone ||
     (user ? (user.mobile || user.mobileNumber) : null);
 
+  const appliance = device.location
+    ? `"${device.name}" at ${device.location}`
+    : `"${device.name}"`;
+
   dispatchSmsAlert(
     device,
     targetMobile,
-    `WattWise ALERT: "${device.name}" is using ${powerW.toFixed(
+    `WattWise ALERT: ${appliance} is using ${powerW.toFixed(
       1
-    )} W, above its ${device.powerLimit} W limit. It will auto turn OFF in ${minutes} min if the power stays above the limit.`
+    )} W (limit: ${powerLimitW} W). If usage stays at or above the limit, it will automatically turn OFF in ${minutes} min.`
   );
-
-  const whatsAppMsg =
-    `⚠️ *WattWise Power Limit Warning!*\n\n` +
-    `Device: *${device.name}*\n` +
-    `Current Power: *${powerW.toFixed(1)} W*\n` +
-    `Power Limit: *${device.powerLimit} W*\n\n` +
-    `⏱️ *Auto turn-OFF in ${minutes} minutes* if the power stays above the limit.`;
-
-  sendWhatsAppAlert(targetMobile, whatsAppMsg);
 
   const timeoutId = setTimeout(async () => {
     try {
@@ -105,7 +102,7 @@ const checkPowerLimit = async ({ reading, device }) => {
         await dev.save();
 
         console.log(
-          `[SYSTEM] Auto-turned off device ${dev.name} after ${minutes} min above its power limit.`
+          `[SYSTEM] Auto-turned off device ${dev.name} after ${minutes} min at or above its power limit.`
         );
 
         await Alert.create({
@@ -114,7 +111,7 @@ const checkPowerLimit = async ({ reading, device }) => {
           deviceId: dev.deviceId,
           type: "info",
           title: "Device auto turned off",
-          message: `${dev.name} was automatically turned off after remaining above its power limit.`,
+          message: `${dev.name} was automatically turned off after remaining at or above its power limit.`,
           severity: "high",
           isRead: false,
         });
@@ -127,14 +124,9 @@ const checkPowerLimit = async ({ reading, device }) => {
         dispatchSmsAlert(
           dev,
           offMobile,
-          `WattWise: "${dev.name}" was automatically turned OFF after remaining above its ${device.powerLimit} W power limit.`
+          `WattWise: "${dev.name}" was automatically turned OFF after remaining at or above its ${dev.powerLimit} W power limit.`
         );
 
-        const whatsAppOffMsg =
-          `🔌 *WattWise Safety Action*\n\n` +
-          `Device: *${dev.name}* was *automatically turned OFF* after remaining above its power limit.`;
-
-        sendWhatsAppAlert(offMobile, whatsAppOffMsg);
       }
     } catch (error) {
       console.error("Auto-off timer error:", error);
@@ -197,23 +189,10 @@ const createReadingAlerts = async ({
           isRead: false,
         });
 
-        // Dispatch an instant WhatsApp warning for dangerous critical load spikes
-        if (type === "danger") {
-          const user = await User.findById(device.owner);
-          const targetMobile =
-            device.alertPhone ||
-            (user ? (user.mobile || user.mobileNumber) : null);
-          const spikeMsg =
-            `🚨 *WattWise Critical Load Alert!*\n\n` +
-            `Device: *${device.name}*\n` +
-            `Current Load: *${Number(reading.power).toFixed(1)} W* (Above 2 kW critical limit)\n` +
-            `Time: *${new Date().toLocaleTimeString()}*`;
-          sendWhatsAppAlert(targetMobile, spikeMsg);
-        }
       }
     }
 
-    // Per-device watt limit: alert + SMS + WhatsApp + auto-off countdown.
+    // Per-device watt limit: in-app alert, SMS, and auto-off countdown.
     await checkPowerLimit({ reading, device });
   } catch (error) {
     // Alert creation must not cause the

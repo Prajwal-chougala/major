@@ -22,6 +22,7 @@ function Devices() {
   const [showWifiPassword, setShowWifiPassword] = useState(false);
   const [testAlertModal, setTestAlertModal] = useState(null);
   const [copiedAlert, setCopiedAlert] = useState(false);
+  const [copiedApiKeyDeviceId, setCopiedApiKeyDeviceId] = useState(null);
 
   useEffect(() => {
     fetchDevices();
@@ -86,7 +87,7 @@ function Devices() {
   const sendTestAlert = async (deviceId) => {
     try {
       setTestingAlertId(deviceId);
-      const res = await API.post(`/devices/${deviceId}/test-alert`);
+      const res = await API.post(`/devices/${deviceId}/test-sms`);
       const dev = devices.find((d) => d.deviceId === deviceId);
       setTestAlertModal({
         success: true,
@@ -103,10 +104,9 @@ function Devices() {
         message:
           error.response?.data?.message ||
           error.response?.data?.reason ||
-          "Failed to dispatch test alert via Twilio.",
+          "Fast2SMS could not accept the test SMS.",
         targetPhone: error.response?.data?.targetPhone || dev?.alertPhone || "N/A",
         deviceName: dev?.name || "Smart Energy Monitor",
-        waLink: error.response?.data?.waLink,
       });
     } finally {
       setTestingAlertId(null);
@@ -158,18 +158,31 @@ function Devices() {
     )
       return;
     try {
-      const res = await API.post(`/devices/${id}/regenerate-key`).catch(
-        (e) => ({
-          data: { apiKey: "new-mock-key-" + Date.now() },
-        })
-      );
-      setDevices(
-        devices.map((d) =>
+      const res = await API.post(`/devices/${id}/regenerate-key`);
+      setDevices((prevDevices) =>
+        prevDevices.map((d) =>
           d.deviceId === id ? { ...d, apiKey: res.data.apiKey } : d
         )
       );
     } catch (error) {
       console.error("Error regenerating key:", error);
+      alert(
+        error.response?.data?.message ||
+          "Could not regenerate the API key. Please try again."
+      );
+    }
+  };
+
+  const copyApiKey = async (device) => {
+    if (!device.apiKey) return;
+
+    try {
+      await navigator.clipboard.writeText(device.apiKey);
+      setCopiedApiKeyDeviceId(device.deviceId);
+      window.setTimeout(() => setCopiedApiKeyDeviceId(null), 2000);
+    } catch (error) {
+      console.error("Error copying device API key:", error);
+      alert("Could not copy the API key. Check browser clipboard permissions.");
     }
   };
 
@@ -255,7 +268,7 @@ function Devices() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider flex items-center justify-between">
-                      <span>SMS / WHATSAPP ALERT NUMBER</span>
+                      <span>SMS ALERT NUMBER</span>
                       <span className="text-[10px] text-emerald-600 font-semibold">⚡ Instant Alerts</span>
                     </label>
                     <input 
@@ -266,7 +279,7 @@ function Devices() {
                       placeholder="+91 98803 31429 (or leave blank to use your profile number)" 
                     />
                     <p className="text-[11px] text-slate-400 mt-1.5">
-                      This number receives threshold SMS and WhatsApp alerts. Leave blank to use your profile mobile number.
+                      Enter a 10-digit Indian number or +91 number. Leave blank to use your profile mobile number.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
@@ -422,7 +435,7 @@ function Devices() {
                     </div>
                     <div>
                       <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                        {testAlertModal.success ? 'Real-Time Alert Dispatched' : 'Twilio Delivery Notice'}
+                        {testAlertModal.success ? 'Test SMS Accepted' : 'SMS Sending Failed'}
                       </h2>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                         Device: <strong className="text-slate-700 dark:text-slate-200">{testAlertModal.deviceName}</strong>
@@ -446,12 +459,12 @@ function Devices() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs border-t border-slate-200/60 dark:border-slate-700/60 pt-2">
-                    <span className="font-semibold text-slate-500 dark:text-slate-400">Dispatch Gateway:</span>
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400">Twilio Cloud API</span>
+                    <span className="font-semibold text-slate-500 dark:text-slate-400">SMS provider:</span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400">Fast2SMS</span>
                   </div>
                   {testAlertModal.sid && (
                     <div className="flex justify-between items-center text-xs border-t border-slate-200/60 dark:border-slate-700/60 pt-2">
-                      <span className="font-semibold text-slate-500 dark:text-slate-400">Twilio Message SID:</span>
+                      <span className="font-semibold text-slate-500 dark:text-slate-400">Fast2SMS request ID:</span>
                       <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
                         {testAlertModal.sid}
                       </span>
@@ -466,24 +479,13 @@ function Devices() {
                     : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
                 }`}>
                   <p className="font-semibold mb-1">
-                    {testAlertModal.success ? 'Message Delivered to Twilio:' : 'Delivery Requirement:'}
+                    {testAlertModal.success ? 'Fast2SMS accepted the message; delivery may take a moment:' : 'SMS error:'}
                   </p>
                   <p>{testAlertModal.message}</p>
                 </div>
 
                 {/* Modal Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                  {testAlertModal.waLink && !testAlertModal.success && (
-                    <a 
-                      href={testAlertModal.waLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 text-center active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-base">chat</span>
-                      DISPATCH VIA WHATSAPP (BACKUP)
-                    </a>
-                  )}
                   <button 
                     type="button"
                     onClick={() => setTestAlertModal(null)}
@@ -518,7 +520,32 @@ function Devices() {
                           </h2>
                           <div className="font-data-mono text-xs text-slate-400 flex flex-wrap items-center gap-2 mt-1">
                             <span className={`w-2 h-2 rounded-full ${device.powerState === 'ON' ? 'bg-[#0EA5E9] animate-pulse shadow-[0_0_8px_rgba(14,165,233,0.8)]' : 'bg-slate-200 dark:bg-slate-700'}`}></span>
-                            <span>Key: {device.apiKey ? `${device.apiKey.slice(0, 8)}...` : 'Hidden'}</span>
+                            <span>API key:</span>
+                            {device.apiKey ? (
+                              <>
+                                <code className="max-w-full break-all rounded bg-slate-100 dark:bg-slate-800 px-2 py-1 text-slate-700 dark:text-slate-200 select-all">
+                                  {device.apiKey}
+                                </code>
+                                <button
+                                  type="button"
+                                  onClick={() => copyApiKey(device)}
+                                  className="inline-flex items-center gap-1 rounded border border-slate-200 dark:border-slate-700 px-2 py-1 font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-slate-800"
+                                  aria-label={`Copy API key for ${device.name}`}
+                                  title="Copy API key"
+                                >
+                                  <span className="material-symbols-outlined text-sm">
+                                    {copiedApiKeyDeviceId === device.deviceId
+                                      ? "check"
+                                      : "content_copy"}
+                                  </span>
+                                  {copiedApiKeyDeviceId === device.deviceId
+                                    ? "Copied"
+                                    : "Copy"}
+                                </button>
+                              </>
+                            ) : (
+                              <span>Unavailable — regenerate the key to view it.</span>
+                            )}
                             {device.alertPhone && (
                               <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px] flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
                                 <span className="material-symbols-outlined text-[13px]">chat</span>
@@ -577,12 +604,12 @@ function Devices() {
                           onClick={() => sendTestAlert(device.deviceId)} 
                           disabled={testingAlertId === device.deviceId}
                           className="px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 font-label-caps text-[10px] font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-                          title="Trigger a real-time WhatsApp alert test to this device"
+                          title="Send a real SMS test to this device's alert number"
                         >
                           <span className="material-symbols-outlined text-sm">
                             {testingAlertId === device.deviceId ? 'sync' : 'notification_important'}
                           </span>{" "}
-                          {testingAlertId === device.deviceId ? 'SENDING...' : 'TEST REALTIME ALERT'}
+                          {testingAlertId === device.deviceId ? 'SENDING...' : 'TEST SMS'}
                         </button>
                         <button 
                           onClick={() => openWifiModal(device)}

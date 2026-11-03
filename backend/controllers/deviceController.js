@@ -362,7 +362,7 @@ const regenerateApiKey = async (req, res) => {
 };
 
 // Real-time alert sending machine: test alert trigger for a specific device
-const testDeviceAlert = async (req, res) => {
+const testDeviceSms = async (req, res) => {
   try {
     const { deviceId } = req.params;
 
@@ -389,41 +389,34 @@ const testDeviceAlert = async (req, res) => {
       });
     }
 
-    const { sendWhatsAppAlert, getWhatsAppLink } = require("../utils/notify");
-    const testMsg =
-      `⚡ *WattWise Real-Time Alert Test!*\n\n` +
-      `Device: *${device.name}*\n` +
-      `Location: *${device.location || "Default"}*\n` +
-      `Current Status: *${device.status.toUpperCase()}* (${device.powerState})\n` +
-      `Power Limit: *${device.powerLimit || 1000} W*\n` +
-      `Configured Alert Recipient: *${targetPhone}*\n\n` +
-      `✅ Your real-time alert sending system is online and functioning!`;
-
-    const result = await sendWhatsAppAlert(targetPhone, testMsg);
+    const { sendSmsAlert } = require("../utils/notify");
+    const result = await sendSmsAlert(
+      targetPhone,
+      `WattWise test SMS for ${device.name}: SMS alerts are working. Power limit: ${device.powerLimit ?? "not set"} W.`
+    );
 
     if (result.sent) {
       return res.status(200).json({
         success: true,
-        message: `Alert dispatched instantly via Twilio Cloud API to ${targetPhone}! (SID: ${result.sid})`,
+        message: `Fast2SMS accepted an SMS for ${targetPhone}. Check the phone for delivery.`,
         targetPhone,
         sid: result.sid,
+        status: result.status,
       });
     } else {
       return res.status(400).json({
         success: false,
-        message: result.reason || "Unable to dispatch message via Twilio.",
+        message: result.reason || "Fast2SMS could not accept the SMS.",
         targetPhone,
         reason: result.reason,
-        waLink: getWhatsAppLink(targetPhone, testMsg),
-        testMsg,
       });
     }
   } catch (error) {
-    console.error("Test device alert error:", error);
+    console.error("Test device SMS error:", error);
 
     return res.status(500).json({
       success: false,
-      message: error.message || "Unable to send test alert.",
+      message: error.message || "Unable to send test SMS.",
     });
   }
 };
@@ -437,6 +430,6 @@ module.exports = {
   turnOnDevice,
   turnOffDevice,
   regenerateApiKey,
-  testDeviceAlert,
+  testDeviceSms,
   updateDeviceWifi,
 };

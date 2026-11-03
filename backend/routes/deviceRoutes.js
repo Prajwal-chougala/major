@@ -11,7 +11,7 @@ const {
   turnOnDevice,
   turnOffDevice,
   regenerateApiKey,
-  testDeviceAlert,
+  testDeviceSms,
   updateDeviceWifi,
 } = require("../controllers/deviceController");
 
@@ -43,8 +43,8 @@ router.post("/:deviceId/turn-off", authenticate, turnOffDevice);
 // Regenerate a device's hardware API key
 router.post("/:deviceId/regenerate-key", authenticate, regenerateApiKey);
 
-// Trigger a real-time test alert to this device's configured WhatsApp number
-router.post("/:deviceId/test-alert", authenticate, testDeviceAlert);
+// Send an SMS test to this device's configured alert number.
+router.post("/:deviceId/test-sms", authenticate, testDeviceSms);
 
 
 module.exports = router;

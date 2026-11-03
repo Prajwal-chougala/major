@@ -4,14 +4,13 @@ const authenticate = require("../middleware/authMiddleware");
 const {
   getSettings,
   updateProfile,
-  updateTwilioConfig,
-  updateCallMeBotConfig,
+  updateSmsConfig,
+  sendTestSms,
 } = require("../controllers/settingsController");
 
 router.get("/", authenticate, getSettings);
 router.put("/profile", authenticate, updateProfile);
-router.post("/twilio", authenticate, updateTwilioConfig);
-router.post("/callmebot", authenticate, updateCallMeBotConfig);
+router.put("/sms", authenticate, updateSmsConfig);
+router.post("/test-sms", authenticate, sendTestSms);
 
 module.exports = router;
-

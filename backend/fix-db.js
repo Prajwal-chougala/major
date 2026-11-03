@@ -11,7 +11,7 @@ async function fixNumber() {
             // Remove any quotes and non-digit characters, and add +91 if missing
             let rawNumber = user.mobileNumber.replace(/[^0-9+]/g, '');
             if (!rawNumber.startsWith('+')) {
-                // Assuming it's an Indian number based on the Twilio sender number (+919880331429)
+                // This deployment uses Indian mobile numbers.
                 rawNumber = '+91' + rawNumber;
             }
             

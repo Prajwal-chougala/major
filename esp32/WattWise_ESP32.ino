@@ -24,15 +24,15 @@
 #include <DNSServer.h>
 
 // =====================================================
-// DEFAULT HARDCODED FALLBACK CONFIG
+// Optional fallback Wi-Fi credentials. Leave blank to use the setup hotspot.
 // =====================================================
-const char* DEFAULT_WIFI_SSID = "Redmi 13 5G";
-const char* DEFAULT_WIFI_PASSWORD = "Laxmi112";
+const char* DEFAULT_WIFI_SSID = "";
+const char* DEFAULT_WIFI_PASSWORD = "";
 
 // Server Endpoints
 const char* SERVER_URL = "https://major-mobh.onrender.com/ingest";
 const char* STATUS_URL = "https://major-mobh.onrender.com/ingest/status";
-const char* DEVICE_API_KEY = "30264d703ba71c84c737f27378f06a530b76338efe2fb5a0";
+const char* DEVICE_API_KEY = "REPLACE_WITH_DEVICE_API_KEY";
 
 // =====================================================
 // HARDWARE PIN DEFINITIONS
@@ -167,6 +167,12 @@ void startCaptivePortal() {
 // =====================================================
 void connectToWiFi() {
   WiFi.mode(WIFI_STA);
+  if (currentSSID.length() == 0) {
+    Serial.println("[WiFi] No saved network. Starting setup hotspot...");
+    startCaptivePortal();
+    return;
+  }
+
   WiFi.begin(currentSSID.c_str(), currentPassword.c_str());
   Serial.printf("Connecting to Wi-Fi: %s", currentSSID.c_str());
 
@@ -192,7 +198,7 @@ void connectToWiFi() {
 // =====================================================
 // READ PZEM DATA
 // =====================================================
-void readPZEM(float &voltage, float &current, float &power, float &energy, float &frequency, float &pf) {
+bool readPZEM(float &voltage, float &current, float &power, float &energy, float &frequency, float &pf) {
   voltage   = pzem.voltage();
   current   = pzem.current();
   power     = pzem.power();
@@ -200,13 +206,35 @@ void readPZEM(float &voltage, float &current, float &power, float &energy, float
   frequency = pzem.frequency();
   pf        = pzem.pf();
 
-  // Sanitize invalid or disconnected sensor readings
-  if (isnan(voltage))   voltage = 0.0;
-  if (isnan(current))   current = 0.0;
-  if (isnan(power))     power = 0.0;
-  if (isnan(energy))    energy = 0.0;
-  if (isnan(frequency)) frequency = 0.0;
-  if (isnan(pf))        pf = 0.0;
+  if (!isfinite(voltage) || !isfinite(current) || !isfinite(power)) {
+    return false;
+  }
+
+  // The backend stores voltage, current, and power. These other values are
+  // kept for local diagnostics only.
+  if (!isfinite(energy))    energy = 0.0;
+  if (!isfinite(frequency)) frequency = 0.0;
+  if (!isfinite(pf))        pf = 0.0;
+
+  return true;
+}
+
+void syncWifiCredentials(const char* serverSsid, const char* serverPass) {
+  if (serverSsid == NULL || strlen(serverSsid) == 0) {
+    return;
+  }
+
+  String targetSsid = serverSsid;
+  String targetPassword = serverPass != NULL ? serverPass : "";
+
+  if (targetSsid == currentSSID && targetPassword == currentPassword) {
+    return;
+  }
+
+  Serial.printf("[Cloud Sync] Applying Wi-Fi settings for network: %s\n", serverSsid);
+  saveWifiCredentials(targetSsid, targetPassword);
+  delay(1000);
+  ESP.restart();
 }
 
 // =====================================================
@@ -214,7 +242,10 @@ void readPZEM(float &voltage, float &current, float &power, float &energy, float
 // =====================================================
 void sendReading() {
   float voltage, current, power, energy, frequency, pf;
-  readPZEM(voltage, current, power, energy, frequency, pf);
+  if (!readPZEM(voltage, current, power, energy, frequency, pf)) {
+    Serial.println("[PZEM] Invalid voltage/current/power reading; skipping upload.");
+    return;
+  }
 
   Serial.println("\n------ PZEM SENSOR READINGS ------");
   Serial.printf("Voltage:      %.1f V\n", voltage);
@@ -225,17 +256,19 @@ void sendReading() {
   Serial.printf("Power Factor: %.2f\n", pf);
 
   HTTPClient http;
-  http.begin(secureClient, SERVER_URL);
+  if (!http.begin(secureClient, SERVER_URL)) {
+    Serial.println("[Ingest] Unable to initialize HTTPS request.");
+    return;
+  }
+  http.setConnectTimeout(10000);
+  http.setTimeout(10000);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-api-key", DEVICE_API_KEY);
 
-  StaticJsonDocument<384> doc;
-  doc["voltage"]     = voltage;
-  doc["current"]     = current;
-  doc["power"]       = power;
-  doc["energy"]      = energy;
-  doc["frequency"]   = frequency;
-  doc["powerFactor"] = pf;
+  StaticJsonDocument<192> doc;
+  doc["voltage"] = voltage;
+  doc["current"] = current;
+  doc["power"]   = power;
 
   String body;
   serializeJson(doc, body);
@@ -245,18 +278,17 @@ void sendReading() {
 
   if (httpCode == 201 || httpCode == 200) {
     String resp = http.getString();
-    StaticJsonDocument<256> respDoc;
-    if (deserializeJson(respDoc, resp) == DeserializationError::Ok) {
-      // Check for remote Wi-Fi change push
-      const char* serverSsid = respDoc["wifiSSID"];
-      const char* serverPass = respDoc["wifiPassword"];
-      if (serverSsid != NULL && strlen(serverSsid) > 0 && strcmp(serverSsid, currentSSID.c_str()) != 0) {
-        Serial.printf("[Cloud Sync] Website Wi-Fi changed to: %s. Applying...\n", serverSsid);
-        saveWifiCredentials(serverSsid, serverPass ? serverPass : "");
-        delay(1000);
-        ESP.restart();
-      }
+    StaticJsonDocument<512> respDoc;
+    DeserializationError error = deserializeJson(respDoc, resp);
+    if (error) {
+      Serial.printf("[Ingest] Response JSON parse error: %s\n", error.c_str());
+    } else {
+      syncWifiCredentials(respDoc["wifiSSID"], respDoc["wifiPassword"]);
     }
+  } else if (httpCode < 0) {
+    Serial.printf("[Ingest] Request failed: %s\n", http.errorToString(httpCode).c_str());
+  } else {
+    Serial.printf("[Ingest] Server rejected reading: %s\n", http.getString().c_str());
   }
 
   http.end();
@@ -267,7 +299,12 @@ void sendReading() {
 // =====================================================
 void syncRelayWithServer() {
   HTTPClient http;
-  http.begin(secureClient, STATUS_URL);
+  if (!http.begin(secureClient, STATUS_URL)) {
+    Serial.println("[Status] Unable to initialize HTTPS request.");
+    return;
+  }
+  http.setConnectTimeout(10000);
+  http.setTimeout(10000);
   http.addHeader("x-api-key", DEVICE_API_KEY);
 
   int httpCode = http.GET();
@@ -286,20 +323,16 @@ void syncRelayWithServer() {
         }
       }
 
-      // 2. Sync Wi-Fi Credentials from Website
-      const char* serverSsid = doc["wifiSSID"];
-      const char* serverPass = doc["wifiPassword"];
-      if (serverSsid != NULL && strlen(serverSsid) > 0 && strcmp(serverSsid, currentSSID.c_str()) != 0) {
-        Serial.printf("[Cloud Sync] Website updated Wi-Fi to: %s. Saving & reconnecting...\n", serverSsid);
-        saveWifiCredentials(serverSsid, serverPass ? serverPass : "");
-        delay(1000);
-        ESP.restart();
-      }
+      // 2. Apply cloud Wi-Fi changes, including password-only updates.
+      syncWifiCredentials(doc["wifiSSID"], doc["wifiPassword"]);
     } else {
       Serial.printf("[Status] JSON Parse Error: %s\n", error.c_str());
     }
+  } else if (httpCode < 0) {
+    Serial.printf("[Status] Request failed: %s\n", http.errorToString(httpCode).c_str());
   } else {
-    Serial.printf("[Status] Failed to poll status (HTTP %d)\n", httpCode);
+    Serial.printf("[Status] Server rejected status request (HTTP %d): %s\n",
+                  httpCode, http.getString().c_str());
   }
 
   http.end();
@@ -376,4 +409,3 @@ void loop() {
     syncRelayWithServer();
   }
 }
-

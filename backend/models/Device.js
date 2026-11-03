@@ -91,8 +91,7 @@ const deviceSchema = new mongoose.Schema(
       default: "ON",
     },
 
-    // Specific phone number designated to receive SMS and WhatsApp alerts.
-    // If not set, falls back to the account owner's mobile number.
+    // Optional SMS recipient; falls back to the account owner's mobile number.
     alertPhone: {
       type: String,
       trim: true,
