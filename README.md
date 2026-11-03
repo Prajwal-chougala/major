@@ -16,8 +16,8 @@ users about configured energy and instantaneous-power limits.
   continuous event. A countdown starts; dropping below the limit cancels it
   and allows a later crossing to alert again.
 - Device-specific SMS recipient with fallback to the account mobile number.
-- Fast2SMS Quick SMS integration, test-SMS endpoints, configurable device
-  Wi-Fi credentials, and server-controlled relay state.
+- Fast2SMS Quick SMS integration, test-SMS endpoints, Arduino-configured Wi-Fi,
+  and server-controlled relay state.
 - Energy, dashboard, alert, analytics, and power-chart APIs.
 
 ## Backend setup
@@ -78,9 +78,6 @@ Authenticated user endpoints include:
 - `POST /settings/test-sms` — send a test message to the user's saved mobile.
 - `PUT /devices/:deviceId` — update the energy and watt thresholds, auto-off
   delay, and optional per-device SMS recipient.
-- `PUT /devices/:deviceId/wifi` — update the network name and/or password.
-  Password-only updates are supported; Wi-Fi passwords are not returned by
-  user-facing device APIs.
 - `POST /devices/:deviceId/test-sms` — send a test to the device recipient or
   account fallback number.
 - `POST /devices/:deviceId/regenerate-key` — replace the hardware API key.
@@ -89,8 +86,7 @@ The hardware uses its `x-api-key` header:
 
 - `POST /ingest` accepts voltage, current, and power. It also stores optional
   `energy`, `frequency`, `powerFactor`, and `timestamp` fields.
-- `GET /ingest/status` returns the server's `powerState` for relay control and
-  any updated Wi-Fi credentials for that authenticated device.
+- `GET /ingest/status` returns the server's `powerState` for relay control.
 
 When adding an appliance, the daily energy threshold remains measured in kWh.
 The instantaneous power alert is a separate optional value in watts, with a
@@ -106,13 +102,12 @@ It targets an ESP32, PZEM-004T v3.0, and an active-low relay:
 - PZEM UART2 RX: GPIO 16; TX: GPIO 17.
 - Relay: GPIO 5.
 - Install the ArduinoJson and PZEM004Tv30 libraries.
-- Replace only the sketch placeholders for backend base URL, device API key,
-  optional fallback Wi-Fi, and the unique `WattWise-Setup` access-point
-  password. Obtain a device API key from the authenticated Devices page.
-- If saved Wi-Fi credentials stop working, connect to the firmware's
-  `WattWise-Setup` access point and use its captive setup page. Credentials
-  saved in Devices are delivered to firmware through the device-authenticated
-  status/ingest responses.
+- Enter your Wi-Fi SSID and password directly in the sketch's `WIFI_SSID` and
+  `WIFI_PASSWORD` definitions, along with the backend URL and device API key.
+  Obtain a device API key from the authenticated Devices page. Wi-Fi
+  credentials are no longer configured from the Devices UI.
+- The ESP32 connects only to a 2.4 GHz Wi-Fi network. If the network changes,
+  update the credentials in the sketch and upload it again.
 - The sketch currently calls `setInsecure()`, which disables TLS certificate
   verification. This is not suitable for production; configure a trusted CA
   certificate on `WiFiClientSecure` before deployment.

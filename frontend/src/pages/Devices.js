@@ -19,8 +19,6 @@ function Devices() {
   const [editPowerThreshold, setEditPowerThreshold] = useState('');
   const [editAutoOffMinutes, setEditAutoOffMinutes] = useState('');
   const [editAlertPhone, setEditAlertPhone] = useState('');
-  const [wifiEditingDevice, setWifiEditingDevice] = useState(null);
-  const [wifiForm, setWifiForm] = useState({ wifiSSID: "", wifiPassword: "" });
   const [actionFeedback, setActionFeedback] = useState({});
   const [copyFeedback, setCopyFeedback] = useState({});
   const [togglingIds, setTogglingIds] = useState({});
@@ -174,55 +172,6 @@ function Devices() {
           type: "error",
           message:
             error.response?.data?.message || "Could not send the test SMS.",
-        },
-      }));
-    }
-  };
-
-  const updateWifiSettings = async (event) => {
-    event.preventDefault();
-    if (!wifiEditingDevice) return;
-    try {
-      const payload = {};
-      if (wifiForm.wifiSSID.trim()) {
-        payload.wifiSSID = wifiForm.wifiSSID.trim();
-      }
-      if (wifiForm.wifiPassword) {
-        payload.wifiPassword = wifiForm.wifiPassword;
-      }
-      if (Object.keys(payload).length === 0) {
-        throw new Error("Enter a new network name or password.");
-      }
-      const response = await API.put(
-        `/devices/${wifiEditingDevice.deviceId}/wifi`,
-        payload
-      );
-      setDevices((current) =>
-        current.map((device) =>
-          device.deviceId === wifiEditingDevice.deviceId
-            ? { ...device, ...response.data.device }
-            : device
-        )
-      );
-      setActionFeedback((current) => ({
-        ...current,
-        [wifiEditingDevice.deviceId]: {
-          type: "success",
-          message: response.data.message,
-        },
-      }));
-      setWifiEditingDevice(null);
-      setWifiForm({ wifiSSID: "", wifiPassword: "" });
-    } catch (error) {
-      console.error("Error updating Wi-Fi settings:", error);
-      setActionFeedback((current) => ({
-        ...current,
-        [wifiEditingDevice.deviceId]: {
-          type: "error",
-          message:
-            error.response?.data?.message ||
-              error.message ||
-              "Could not update Wi-Fi settings.",
         },
       }));
     }
@@ -418,41 +367,6 @@ function Devices() {
                   <div className="flex justify-end gap-4 mt-4 pt-6 border-t border-slate-100">
                     <button type="button" onClick={() => setEditingDevice(null)} className="px-6 py-3 rounded-full text-slate-400 font-bold tracking-wider hover:bg-slate-100 transition-colors text-xs">CANCEL</button>
                     <button type="submit" className="px-8 py-3 rounded-full bg-gradient-to-r from-[#35259B] to-[#0EA5E9] text-white font-bold tracking-wider hover:opacity-90 transition-all shadow-md shadow-sky-500/10 text-xs">SAVE THRESHOLD</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {wifiEditingDevice && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white border border-slate-200 p-8 rounded-3xl w-full max-w-md shadow-2xl">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Wi-Fi settings</h2>
-                    <p className="text-xs text-slate-400 mt-1">{wifiEditingDevice.name}</p>
-                  </div>
-                  <button type="button" onClick={() => setWifiEditingDevice(null)} className="text-slate-400 hover:text-slate-700 transition-colors">
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
-                </div>
-                <p className="text-sm text-slate-500 mb-5">
-                  Current network: {wifiEditingDevice.wifiSSID || "not configured"}.
-                  Leave the network name blank to update only the password.
-                </p>
-                <form onSubmit={updateWifiSettings} className="flex flex-col gap-5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">NEW WI-FI NETWORK (OPTIONAL)</label>
-                    <input type="text" autoComplete="off" value={wifiForm.wifiSSID} onChange={e => setWifiForm({...wifiForm, wifiSSID: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 outline-none" placeholder="Leave blank to keep current network" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 tracking-wider">NEW WI-FI PASSWORD (OPTIONAL)</label>
-                    <input type="password" autoComplete="new-password" value={wifiForm.wifiPassword} onChange={e => setWifiForm({...wifiForm, wifiPassword: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 outline-none" placeholder="Leave blank to keep current password" />
-                  </div>
-                  <p className="text-[11px] text-slate-400">Credentials are sent only to the authenticated device firmware at its next check-in and are never returned to this page.</p>
-                  <div className="flex justify-end gap-4 pt-5 border-t border-slate-100">
-                    <button type="button" onClick={() => setWifiEditingDevice(null)} className="px-6 py-3 rounded-full text-slate-400 font-bold text-xs">CANCEL</button>
-                    <button type="submit" className="px-8 py-3 rounded-full bg-gradient-to-r from-[#35259B] to-[#0EA5E9] text-white font-bold text-xs">SAVE WI-FI</button>
                   </div>
                 </form>
               </div>
@@ -661,15 +575,6 @@ function Devices() {
                           </button>
                           <button onClick={() => sendDeviceTestSms(device.deviceId)} className="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 font-label-caps text-[10px] font-bold hover:bg-emerald-50 transition-colors flex items-center gap-1.5">
                             TEST FAST2SMS
-                          </button>
-                          <button
-                            onClick={() => {
-                              setWifiEditingDevice(device);
-                              setWifiForm({ wifiSSID: "", wifiPassword: "" });
-                            }}
-                            className="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 font-label-caps text-[10px] font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
-                          >
-                            WI-FI
                           </button>
                           <button onClick={() => regenerateKey(device.deviceId)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 font-label-caps text-[10px] font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-sm">
