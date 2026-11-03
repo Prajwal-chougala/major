@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { normalizePhoneNumber } = require("../utils/notify");
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -31,6 +32,14 @@ const register = async (req, res) => {
       });
     }
 
+    const normalizedMobile = normalizePhoneNumber(mobile);
+    if (!normalizedMobile) {
+      return res.status(400).json({
+        message:
+          "Enter a valid Indian mobile number in 10-digit or +91 format.",
+      });
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
     const existingUser = await User.findOne({
@@ -48,8 +57,8 @@ const register = async (req, res) => {
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
-      mobile: mobile.trim(),
-      mobileNumber: mobile.trim(),
+      mobile: normalizedMobile,
+      mobileNumber: normalizedMobile,
       passwordHash,
     });
 
@@ -90,9 +99,19 @@ const login = async (req, res) => {
     // Determine whether the user entered an email or mobile number.
     const isEmail = value.includes("@");
 
+    const normalizedMobile = normalizePhoneNumber(value);
     const query = isEmail
       ? { email: value.toLowerCase() }
-      : { mobile: value };
+      : normalizedMobile
+        ? {
+            $or: [
+              { mobile: normalizedMobile },
+              { mobileNumber: normalizedMobile },
+              { mobile: value },
+              { mobileNumber: value },
+            ],
+          }
+        : { mobile: value };
 
     const user = await User.findOne(query).select("+passwordHash +password");
 

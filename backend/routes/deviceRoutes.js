@@ -11,6 +11,8 @@ const {
   turnOnDevice,
   turnOffDevice,
   regenerateApiKey,
+  testDeviceSms,
+  updateDeviceWifi,
 } = require("../controllers/deviceController");
 
 const authenticate = require("../middleware/authMiddleware");
@@ -27,6 +29,7 @@ router.get("/:deviceId", authenticate, getDeviceById);
 
 // Update device
 router.put("/:deviceId", authenticate, updateDevice);
+router.put("/:deviceId/wifi", authenticate, updateDeviceWifi);
 
 // Delete device
 router.delete("/:deviceId", authenticate, deleteDevice);
@@ -37,6 +40,7 @@ router.post("/:deviceId/turn-off", authenticate, turnOffDevice);
 
 // Regenerate a device's hardware API key
 router.post("/:deviceId/regenerate-key", authenticate, regenerateApiKey);
+router.post("/:deviceId/test-sms", authenticate, testDeviceSms);
 
 
 module.exports = router;

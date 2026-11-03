@@ -9,20 +9,53 @@ const ingestReading = async (req, res) => {
     const device = req.device; // set by apiKeyMiddleware
     let { voltage, current, power, energy, frequency, powerFactor, timestamp } = req.body;
 
-    // Support flexible hardware payloads:
-    // If power is provided without voltage/current, infer them.
-    if (power !== undefined && Number.isFinite(Number(power))) {
+    const parseNumber = (value) => {
+      if (value === undefined || value === null || value === "") return null;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    };
+
+    if (
+      power !== undefined &&
+      (parseNumber(power) === null || parseNumber(power) < 0)
+    ) {
+      return res.status(400).json({
+        message: "Power must be a valid non-negative number.",
+      });
+    }
+
+    // Keep power-only payload compatibility while rejecting malformed sensor fields.
+    if (power !== undefined) {
       power = Number(power);
-      voltage = voltage !== undefined && Number.isFinite(Number(voltage)) ? Number(voltage) : 230;
-      current = current !== undefined && Number.isFinite(Number(current)) ? Number(current) : Number((power / (voltage || 230)).toFixed(3));
+      const parsedVoltage = parseNumber(voltage);
+      const parsedCurrent = parseNumber(current);
+      if (
+        (voltage !== undefined &&
+          (parsedVoltage === null || parsedVoltage <= 0)) ||
+        (current !== undefined && (parsedCurrent === null || parsedCurrent < 0))
+      ) {
+        return res.status(400).json({
+          message: "Voltage must be positive and current must be non-negative.",
+        });
+      }
+
+      voltage = parsedVoltage ?? 230;
+      current =
+        parsedCurrent ??
+        Number((power / (voltage || 230)).toFixed(3));
     } else if (
       voltage !== undefined &&
       current !== undefined &&
-      Number.isFinite(Number(voltage)) &&
-      Number.isFinite(Number(current))
+      parseNumber(voltage) !== null &&
+      parseNumber(current) !== null
     ) {
       voltage = Number(voltage);
       current = Number(current);
+      if (voltage <= 0 || current < 0) {
+        return res.status(400).json({
+          message: "Voltage must be positive and current must be non-negative.",
+        });
+      }
       power = Number((voltage * current).toFixed(2));
     } else {
       return res.status(400).json({
@@ -30,7 +63,28 @@ const ingestReading = async (req, res) => {
       });
     }
 
+    const parsedEnergy = parseNumber(energy);
+    const parsedFrequency = parseNumber(frequency);
+    const parsedPowerFactor = parseNumber(powerFactor);
+    if (
+      (energy !== undefined && (parsedEnergy === null || parsedEnergy < 0)) ||
+      (frequency !== undefined &&
+        (parsedFrequency === null || parsedFrequency <= 0)) ||
+      (powerFactor !== undefined &&
+        (parsedPowerFactor === null ||
+          parsedPowerFactor < 0 ||
+          parsedPowerFactor > 1))
+    ) {
+      return res.status(400).json({
+        message:
+          "Energy must be non-negative, frequency must be positive, and power factor must be between 0 and 1.",
+      });
+    }
+
     const now = timestamp ? new Date(timestamp) : new Date();
+    if (Number.isNaN(now.getTime())) {
+      return res.status(400).json({ message: "Timestamp must be a valid date." });
+    }
     device.lastSeen = now;
     device.status = "online";
 
@@ -44,6 +98,8 @@ const ingestReading = async (req, res) => {
         powerState: "OFF",
         dailyEnergyKWh: device.dailyEnergyKWh || 0,
         autoOffDueToLimit: !!device.autoOffDueToLimit,
+        wifiSSID: device.wifiSSID || "",
+        wifiPassword: device.wifiPassword || "",
       });
     }
 
@@ -56,7 +112,7 @@ const ingestReading = async (req, res) => {
       .sort({ timestamp: -1 })
       .lean();
 
-    const pzemEnergyKWh = energy !== undefined && Number.isFinite(Number(energy)) ? Number(energy) : 0;
+    const pzemEnergyKWh = parsedEnergy ?? 0;
 
     const reading = await Reading.create({
       deviceId: device.deviceId,
@@ -64,8 +120,8 @@ const ingestReading = async (req, res) => {
       current,
       power,
       energy: pzemEnergyKWh,
-      frequency: frequency !== undefined && Number.isFinite(Number(frequency)) ? Number(frequency) : null,
-      powerFactor: powerFactor !== undefined && Number.isFinite(Number(powerFactor)) ? Number(powerFactor) : null,
+      frequency: parsedFrequency,
+      powerFactor: parsedPowerFactor,
       timestamp: now,
     });
 
@@ -103,6 +159,8 @@ const ingestReading = async (req, res) => {
       powerState: device.powerState,
       dailyEnergyKWh: device.dailyEnergyKWh,
       autoOffDueToLimit: !!device.autoOffDueToLimit,
+      wifiSSID: device.wifiSSID || "",
+      wifiPassword: device.wifiPassword || "",
       reading,
     });
   } catch (error) {
@@ -131,6 +189,8 @@ const getIngestStatus = async (req, res) => {
       powerLimit: device.powerLimit,
       dailyEnergyKWh: device.dailyEnergyKWh || 0,
       autoOffDueToLimit: !!device.autoOffDueToLimit,
+      wifiSSID: device.wifiSSID || "",
+      wifiPassword: device.wifiPassword || "",
     });
   } catch (error) {
     console.error("Get ingest status error:", error);

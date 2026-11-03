@@ -51,12 +51,34 @@ const deviceSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Power threshold in kWh for daily energy limit. When a reading causes daily
-    // cumulative energy to exceed this, an alert + SMS fires and an auto-off starts.
+    // Daily energy threshold retained for existing devices and API clients.
     powerLimit: {
       type: Number,
       default: null,
       min: 0,
+    },
+
+    powerThresholdW: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    autoOffMinutes: {
+      type: Number,
+      default: null,
+      min: 1,
+    },
+
+    alertPhone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    powerAlertActive: {
+      type: Boolean,
+      default: false,
     },
 
     dailyEnergyKWh: {
@@ -83,6 +105,18 @@ const deviceSchema = new mongoose.Schema(
       type: String,
       enum: ["ON", "OFF"],
       default: "ON",
+    },
+
+    wifiSSID: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    wifiPassword: {
+      type: String,
+      default: "",
+      select: false,
     },
   },
   {

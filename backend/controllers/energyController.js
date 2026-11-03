@@ -1,7 +1,6 @@
 const Reading = require("../models/Reading");
 const Device = require("../models/Device");
-
-const RATE_PER_KWH = Number(process.env.RATE_PER_KWH) || 8;
+const { calculateTariff } = require("../utils/tariff");
 
 // Calculate energy and cost for a device
 const getDeviceEnergy = async (req, res) => {
@@ -35,12 +34,18 @@ const getDeviceEnergy = async (req, res) => {
       .lean();
 
     if (readings.length < 2) {
+      const tariff = calculateTariff(0);
       return res.status(200).json({
         deviceId,
         date: startOfDay.toISOString().split("T")[0],
         totalEnergyKWh: 0,
+        totalUnits: 0,
         estimatedCost: 0,
-        ratePerKWh: RATE_PER_KWH,
+        ratePerKWh: tariff.ratePerKWh,
+        ratePerUnit: tariff.ratePerUnit,
+        projectedMonthlyCost: 0,
+        currency: tariff.currency,
+        currencyCode: tariff.currencyCode,
         readingCount: readings.length,
         message:
           "Not enough readings to calculate energy.",
@@ -87,9 +92,7 @@ const getDeviceEnergy = async (req, res) => {
       totalEnergyKWh.toFixed(4)
     );
 
-    const estimatedCost = Number(
-      (totalEnergyKWh * RATE_PER_KWH).toFixed(2)
-    );
+    const tariff = calculateTariff(totalEnergyKWh);
 
     return res.status(200).json({
       deviceId,
@@ -97,8 +100,13 @@ const getDeviceEnergy = async (req, res) => {
         .toISOString()
         .split("T")[0],
       totalEnergyKWh,
-      estimatedCost,
-      ratePerKWh: RATE_PER_KWH,
+      totalUnits: totalEnergyKWh,
+      estimatedCost: tariff.dailyCost,
+      projectedMonthlyCost: tariff.projectedMonthlyCost,
+      ratePerKWh: tariff.ratePerKWh,
+      ratePerUnit: tariff.ratePerUnit,
+      currency: tariff.currency,
+      currencyCode: tariff.currencyCode,
       readingCount: readings.length,
     });
   } catch (error) {

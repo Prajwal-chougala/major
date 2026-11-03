@@ -1,29 +1,20 @@
-// Handles outbound SMS alerts via Twilio and email alerts via Nodemailer.
-// If credentials aren't configured, falls back to logging so the
-// rest of the app keeps working during local development.
+const FAST2SMS_URL = "https://www.fast2sms.com/dev/bulkV2";
 
-let twilioClient = null;
+const normalizePhoneNumber = (phone) => {
+  if (typeof phone !== "string" && typeof phone !== "number") return null;
 
-const {
-  TWILIO_ACCOUNT_SID,
-  TWILIO_AUTH_TOKEN,
-  TWILIO_PHONE_NUMBER,
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_USER,
-  SMTP_PASS,
-  SMTP_FROM,
-} = process.env;
+  const rawPhone = String(phone).trim();
+  const compactPhone = rawPhone.replace(/[\s()-]/g, "");
 
-if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE_NUMBER) {
-  const twilio = require("twilio");
-  twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-} else {
-  console.warn(
-    "[notify] Twilio credentials not set (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER). " +
-      "SMS alerts will be logged to the console instead of actually sent."
-  );
-}
+  if (/^[6-9]\d{9}$/.test(compactPhone)) return `+91${compactPhone}`;
+  if (/^\+91[6-9]\d{9}$/.test(compactPhone)) return compactPhone;
+  return null;
+};
+
+const getSmsConfiguration = () => ({
+  configured: Boolean((process.env.FAST2SMS_API_KEY || "").trim()),
+  provider: "Fast2SMS",
+});
 
 // --- Nodemailer transporter setup ---
 let emailTransporter = null;
@@ -69,43 +60,65 @@ const initEmailTransporter = async () => {
   }
 };
 
-// Initialize transporter immediately
-initEmailTransporter().catch(() => {});
-
-// Send an SMS alert to a user's mobile number (expects E.164 format, e.g. +919876543210 or +15551234567).
 const sendSmsAlert = async (mobile, message) => {
-  if (!mobile) {
-    console.warn("[notify] No mobile number on file, skipping SMS:", message);
-    return { sent: false, reason: "no_mobile_number" };
+  const normalizedPhone = normalizePhoneNumber(mobile);
+  if (!normalizedPhone) {
+    return {
+      sent: false,
+      reason:
+        "Enter a valid Indian mobile number in 10-digit or +91 format.",
+    };
   }
 
-  // Format mobile to E.164 format
-  let cleanMobile = String(mobile).trim().replace(/[^0-9+]/g, "");
-  if (!cleanMobile.startsWith("+")) {
-    if (cleanMobile.length === 10) {
-      cleanMobile = "+91" + cleanMobile;
-    } else {
-      cleanMobile = "+" + cleanMobile;
-    }
+  const apiKey = (process.env.FAST2SMS_API_KEY || "").trim();
+  if (!apiKey) {
+    return {
+      sent: false,
+      reason: "Fast2SMS is not configured on the server.",
+    };
   }
 
-  if (!twilioClient) {
-    console.log(`[SMS MOCK] To ${cleanMobile}: ${message}`);
-    return { sent: false, reason: "twilio_not_configured" };
-  }
+  const url = new URL(FAST2SMS_URL);
+  url.searchParams.set("route", "q");
+  url.searchParams.set("numbers", normalizedPhone.slice(-10));
+  url.searchParams.set("message", String(message));
+  url.searchParams.set("sms_details", "1");
 
   try {
-    const result = await twilioClient.messages.create({
-      body: message,
-      from: TWILIO_PHONE_NUMBER,
-      to: cleanMobile,
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        authorization: apiKey,
+        accept: "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
     });
+    const result = await response.json().catch(() => null);
 
-    console.log(`[SMS] Sent to ${cleanMobile}, sid=${result.sid}`);
-    return { sent: true, sid: result.sid };
+    if (!response.ok || result?.return !== true) {
+      const providerMessage = Array.isArray(result?.message)
+        ? result.message.join(", ")
+        : result?.message;
+      const reason =
+        providerMessage || `Fast2SMS returned HTTP ${response.status}.`;
+      console.error("[Fast2SMS] SMS request rejected:", reason);
+      return { sent: false, reason: String(reason) };
+    }
+
+    return {
+      sent: true,
+      sid: result.request_id || null,
+      status: "accepted",
+      gateway: "Fast2SMS",
+    };
   } catch (error) {
-    console.error("[notify] Failed to send SMS via Twilio:", error.message);
-    return { sent: false, reason: error.message };
+    const timedOut =
+      error.name === "TimeoutError" || error.name === "AbortError";
+    const reason = timedOut
+      ? "Fast2SMS request timed out."
+      : "Could not connect to Fast2SMS.";
+    console.error("[Fast2SMS] SMS request failed:", error.message);
+    return { sent: false, reason };
   }
 };
 
@@ -207,6 +220,8 @@ const sendEmailAlert = async (email, subject, message, customHtml = null) => {
 };
 
 module.exports = {
+  getSmsConfiguration,
+  normalizePhoneNumber,
   sendSmsAlert,
   sendEmailAlert,
 };

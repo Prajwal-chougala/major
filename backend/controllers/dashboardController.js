@@ -1,8 +1,6 @@
 const Device = require("../models/Device");
 const Reading = require("../models/Reading");
-
-const RATE_PER_KWH =
-  Number(process.env.RATE_PER_KWH) || 8;
+const { calculateTariff } = require("../utils/tariff");
 
 const getDashboard = async (req, res) => {
   try {
@@ -14,13 +12,20 @@ const getDashboard = async (req, res) => {
     }).lean();
 
     if (devices.length === 0) {
+      const tariff = calculateTariff(0);
       return res.status(200).json({
         totalEnergyKWh: 0,
+        totalUnits: 0,
         currentPowerKW: 0,
         activeDevices: 0,
         totalDevices: 0,
         offlineDevices: 0,
         estimatedCost: 0,
+        projectedMonthlyCost: 0,
+        ratePerKWh: tariff.ratePerKWh,
+        ratePerUnit: tariff.ratePerUnit,
+        currency: tariff.currency,
+        currencyCode: tariff.currencyCode,
         peakPowerKW: 0,
         devices: [],
       });
@@ -198,8 +203,7 @@ const getDashboard = async (req, res) => {
 
     const offlineDevices = devices.length - activeDevices;
 
-    const estimatedCost =
-      totalEnergyKWh * RATE_PER_KWH;
+    const tariff = calculateTariff(totalEnergyKWh);
 
     // Find the latest reading across all devices for live telemetry cards
     let latestSystemReading = null;
@@ -218,6 +222,7 @@ const getDashboard = async (req, res) => {
       totalEnergyKWh: Number(
         totalEnergyKWh.toFixed(4)
       ),
+      totalUnits: Number(totalEnergyKWh.toFixed(4)),
 
       currentPowerKW: Number(
         (currentPowerW / 1000).toFixed(3)
@@ -233,11 +238,14 @@ const getDashboard = async (req, res) => {
 
       offlineDevices,
 
-      estimatedCost: Number(
-        estimatedCost.toFixed(2)
-      ),
+      estimatedCost: tariff.dailyCost,
 
-      ratePerKWh: RATE_PER_KWH,
+      projectedMonthlyCost: tariff.projectedMonthlyCost,
+
+      ratePerKWh: tariff.ratePerKWh,
+      ratePerUnit: tariff.ratePerUnit,
+      currency: tariff.currency,
+      currencyCode: tariff.currencyCode,
 
       peakPowerKW: Number(
         (peakPowerW / 1000).toFixed(3)

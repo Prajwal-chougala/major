@@ -15,23 +15,27 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
 
   const handleAuth = async (e) => {
     e.preventDefault();
-    
+
+    setErrorMessage("");
     if (!isLogin && password.length < 8) {
-      alert("Password must contain at least 8 characters!");
+      setErrorMessage("Password must contain at least 8 characters.");
       return;
     }
 
     if (!isLogin && password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setErrorMessage("Passwords do not match.");
       return;
     }
 
     if (!isLogin && !agreeTerms) {
-      alert("You must agree to the Terms of Service and Privacy Policy.");
+      setErrorMessage(
+        "You must agree to the Terms of Service and Privacy Policy."
+      );
       return;
     }
 
@@ -56,6 +60,8 @@ function AuthPage() {
           id: userId,
           name: user?.name || name || "",
           email: user?.email || email || "",
+          mobile: user?.mobile || user?.mobileNumber || mobile || "",
+          role: user?.role || "user",
           mobileNumber: user?.mobile || user?.mobileNumber || mobile || ""
         };
         localStorage.setItem("user", JSON.stringify(userObj));
@@ -64,8 +70,14 @@ function AuthPage() {
       navigate("/dashboard");
     } catch (error) {
       console.error("Auth error:", error.response?.data || error.message);
-      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || "Authentication failed. Please check your details.";
-      alert(errorMsg);
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          (error.message === "Network Error"
+            ? "Unable to connect to the backend server. Please try again."
+            : error.message) ||
+          "Authentication failed. Please check your credentials."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +85,7 @@ function AuthPage() {
 
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
+    setErrorMessage("");
     // Reset fields
     setName("");
     setEmail("");
@@ -84,9 +97,9 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-white font-inter text-slate-800 overflow-x-hidden">
+    <div className="min-h-screen w-full flex bg-white dark:bg-slate-950 font-inter text-slate-800 dark:text-slate-100 overflow-x-hidden transition-colors">
       {/* Left Column (Forms) */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-12 md:p-20 bg-white">
+      <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-12 md:p-20 bg-white dark:bg-slate-950 transition-colors">
         {/* Header Logo */}
         <div className="flex items-center gap-3">
           <img
@@ -94,7 +107,7 @@ function AuthPage() {
             className="h-7 w-auto object-contain"
             src="/logo.jpg"
           />
-          <span className="font-bold text-lg text-slate-900 tracking-tight">
+          <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">
             WattWise
           </span>
         </div>
@@ -104,10 +117,10 @@ function AuthPage() {
           {isLogin ? (
             /* Login Form */
             <>
-              <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight mb-2">
+              <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">
                 Welcome! Log in here.
               </h1>
-              <p className="text-slate-500 mb-8 text-sm sm:text-base">
+              <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm sm:text-base">
                 Haven't signed up?{" "}
                 <button
                   type="button"
@@ -118,11 +131,20 @@ function AuthPage() {
                 </button>
               </p>
 
+              {errorMessage && (
+                <div
+                  role="alert"
+                  className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
+                >
+                  {errorMessage}
+                </div>
+              )}
+
               <form onSubmit={handleAuth} className="flex flex-col gap-5">
                 <div className="flex flex-col gap-1.5">
                   <label
                     htmlFor="login-email"
-                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
                     Enter email *
                   </label>
@@ -132,7 +154,7 @@ function AuthPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
                     placeholder="e.g. manager@wattwise.net"
                   />
                 </div>
@@ -140,7 +162,7 @@ function AuthPage() {
                 <div className="flex flex-col gap-1.5">
                   <label
                     htmlFor="login-password"
-                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
                     Enter password *
                   </label>
@@ -151,7 +173,7 @@ function AuthPage() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 pr-10 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 pr-10 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
                       placeholder="Enter your password"
                     />
                     <button
@@ -188,19 +210,20 @@ function AuthPage() {
 
                 <button
                   type="submit"
-                  className="w-full mt-6 py-3.5 bg-gradient-to-r from-[#35259B] to-[#0EA5E9] hover:from-[#2143B8] hover:to-[#0EA5E9] text-white font-semibold rounded-full shadow-lg shadow-sky-500/10 hover:shadow-sky-500/25 transition-all text-center select-none active:scale-[0.98] text-sm"
+                  disabled={submitting}
+                  className="w-full mt-6 py-3.5 bg-gradient-to-r from-[#35259B] to-[#0EA5E9] hover:from-[#2143B8] hover:to-[#0EA5E9] text-white font-semibold rounded-full shadow-lg shadow-sky-500/10 hover:shadow-sky-500/25 transition-all text-center select-none active:scale-[0.98] text-sm disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Log in
+                  {submitting ? "Signing in..." : "Log in"}
                 </button>
               </form>
             </>
           ) : (
             /* Signup Form */
             <>
-              <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight mb-2">
+              <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">
                 Create an account.
               </h1>
-              <p className="text-slate-500 mb-8 text-sm sm:text-base">
+              <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm sm:text-base">
                 Already signed up?{" "}
                 <button
                   type="button"
@@ -211,11 +234,20 @@ function AuthPage() {
                 </button>
               </p>
 
+              {errorMessage && (
+                <div
+                  role="alert"
+                  className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
+                >
+                  {errorMessage}
+                </div>
+              )}
+
               <form onSubmit={handleAuth} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label
                     htmlFor="signup-name"
-                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
                     Enter full name *
                   </label>
@@ -225,7 +257,7 @@ function AuthPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
                     placeholder="e.g. Prajwal Chougala"
                   />
                 </div>
@@ -233,7 +265,7 @@ function AuthPage() {
                 <div className="flex flex-col gap-1.5">
                   <label
                     htmlFor="signup-email"
-                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
                     Enter email *
                   </label>
@@ -243,7 +275,7 @@ function AuthPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
                     placeholder="e.g. manager@wattwise.net"
                   />
                 </div>
@@ -251,7 +283,7 @@ function AuthPage() {
                 <div className="flex flex-col gap-1.5">
                   <label
                     htmlFor="signup-mobile"
-                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
                     Enter mobile number *
                   </label>
@@ -261,8 +293,8 @@ function AuthPage() {
                     required
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
-                    placeholder="e.g. +1234567890"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
+                    placeholder="10 digits or +91"
                   />
                 </div>
 
@@ -270,7 +302,7 @@ function AuthPage() {
                   <div className="flex flex-col gap-1.5">
                     <label
                       htmlFor="signup-password"
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                     >
                       Enter password *
                     </label>
@@ -281,7 +313,7 @@ function AuthPage() {
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 pr-10 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 pr-10 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
                         placeholder="Choose password"
                       />
                       <button
@@ -299,7 +331,7 @@ function AuthPage() {
                   <div className="flex flex-col gap-1.5">
                     <label
                       htmlFor="signup-confirm"
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                     >
                       Confirm password *
                     </label>
@@ -309,7 +341,7 @@ function AuthPage() {
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] transition-all text-sm"
                       placeholder="Verify password"
                     />
                   </div>

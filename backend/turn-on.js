@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 async function turnOn() {
     try {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
         const Device = require('./models/Device');
         
         await Device.updateMany({}, { status: 'ON' });

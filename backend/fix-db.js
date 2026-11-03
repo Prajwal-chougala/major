@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 async function fixNumber() {
     try {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
         const User = require('./models/User');
         
         const user = await User.findOne();
@@ -11,7 +11,7 @@ async function fixNumber() {
             // Remove any quotes and non-digit characters, and add +91 if missing
             let rawNumber = user.mobileNumber.replace(/[^0-9+]/g, '');
             if (!rawNumber.startsWith('+')) {
-                // Assuming it's an Indian number based on the Twilio sender number (+919880331429)
+                // This migration expects an Indian mobile number.
                 rawNumber = '+91' + rawNumber;
             }
             

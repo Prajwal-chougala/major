@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://major-mobh.onrender.com'
+    baseURL: import.meta.env.VITE_API_URL
 });
 
 API.interceptors.request.use((req) => {

@@ -14,7 +14,8 @@ function ProfilePage() {
   const [profile] = useState({ 
     name: storedUser.name || "", 
     email: storedUser.email || "", 
-    mobileNumber: storedUser.mobileNumber || "" 
+    mobileNumber: storedUser.mobile || storedUser.mobileNumber || "",
+    role: storedUser.role || "user",
   });
   
   return (
@@ -44,7 +45,7 @@ function ProfilePage() {
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">{profile?.name || 'Unknown User'}</h2>
                     <span className="px-2.5 py-0.5 mt-1.5 inline-block bg-sky-50 text-[#0EA5E9] border border-sky-100/50 rounded font-bold text-xs">
-                      ADMINISTRATOR
+                      {profile.role === "admin" ? "ADMINISTRATOR" : "USER"}
                     </span>
                   </div>
                 </div>

@@ -14,7 +14,7 @@ const authenticateDevice = async (req, res, next) => {
       });
     }
 
-    const device = await Device.findOne({ apiKey });
+    const device = await Device.findOne({ apiKey }).select("+wifiPassword");
 
     if (!device) {
       return res.status(401).json({

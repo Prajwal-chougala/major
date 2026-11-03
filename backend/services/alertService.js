@@ -1,7 +1,10 @@
 const Alert = require("../models/Alert");
-const Device = require("../models/Device");
 const User = require("../models/User");
 const { sendSmsAlert, sendEmailAlert } = require("../utils/notify");
+const {
+  checkPowerThreshold,
+  clearPowerAutoOffTimer,
+} = require("./powerThresholdService");
 
 const POWER_WARNING_KW = 1.0;
 const POWER_DANGER_KW = 2.0;
@@ -13,9 +16,10 @@ const alertedToday = new Map();
 // Called from deviceController when a user manually turns a device off/on,
 // so we can reset the alert flag if needed.
 const clearAutoOffTimer = (deviceIdentifier) => {
-  if (!deviceIdentifier) return;
-  const key = deviceIdentifier.toString();
-  alertedToday.delete(key);
+    if (!deviceIdentifier) return;
+    const key = deviceIdentifier.toString();
+    alertedToday.delete(key);
+    clearPowerAutoOffTimer(key);
 };
 
 // If the device has a user-configured energy threshold (powerLimit in kWh) and its dailyEnergyKWh
@@ -74,7 +78,8 @@ const checkEnergyLimit = async ({ reading, device }) => {
 
   // Fetch registered user for contact details
   const user = await User.findById(device.owner);
-  const mobile = user ? (user.mobile || user.mobileNumber) : null;
+  const mobile =
+    device.alertPhone || (user ? user.mobile || user.mobileNumber : null);
 
   const alertMessage = `WattWise ALERT: "${device.name}" has reached your energy threshold with ${currentEnergyKWh.toFixed(
     3
@@ -83,7 +88,10 @@ const checkEnergyLimit = async ({ reading, device }) => {
   // Send SMS to user's registered number
   if (mobile) {
     console.log(`[ALERT] Sending threshold SMS to registered number: ${mobile}`);
-    await sendSmsAlert(mobile, alertMessage);
+    const result = await sendSmsAlert(mobile, alertMessage);
+    if (!result.sent) {
+      console.error("[ALERT] Energy threshold SMS failed:", result.reason);
+    }
   } else {
     console.warn(`[ALERT] No mobile number registered for user ${device.owner}, unable to send SMS.`);
   }
@@ -160,6 +168,7 @@ const createReadingAlerts = async ({
     }
 
     // Per-device configured energy threshold: auto-turn off + SMS + alert.
+    await checkPowerThreshold({ reading, device });
     await checkEnergyLimit({ reading, device });
   } catch (error) {
     // Alert creation must not cause the

@@ -1,6 +1,37 @@
 const Device = require("../models/Device");
 const Reading = require("../models/Reading");
 const { clearAutoOffTimer } = require("../services/alertService");
+const { normalizePhoneNumber, sendSmsAlert } = require("../utils/notify");
+const { getRatePerKWh } = require("../utils/tariff");
+const { regenerateDeviceApiKey } = require("../services/deviceKeyService");
+
+const serializeDevice = (device) => {
+  const result = device.toObject ? device.toObject() : { ...device };
+  delete result.wifiPassword;
+  return result;
+};
+
+const parseOptionalNumber = (value, { minimum = 0, integer = false } = {}) => {
+  if (value === undefined) return { valid: true, value: undefined };
+  if (value === null || value === "") return { valid: true, value: null };
+
+  const number = Number(value);
+  return {
+    valid:
+      Number.isFinite(number) &&
+      number >= minimum &&
+      (!integer || Number.isInteger(number)),
+    value: number,
+  };
+};
+
+const normalizeAlertPhone = (phone) => {
+  if (phone === undefined || phone === null || phone === "") {
+    return { valid: true, value: "" };
+  }
+  const normalized = normalizePhoneNumber(phone);
+  return { valid: Boolean(normalized), value: normalized };
+};
 
 // Helper to calculate today's IST start
 const getStartOfTodayIST = () => {
@@ -13,11 +44,43 @@ const getStartOfTodayIST = () => {
 // Create a new device
 const createDevice = async (req, res) => {
   try {
-    const { deviceId, name, location, powerLimit } = req.body;
+    const {
+      deviceId,
+      name,
+      location,
+      powerLimit,
+      powerThresholdW,
+      autoOffMinutes,
+      alertPhone,
+    } = req.body;
 
     if (!deviceId || !name) {
       return res.status(400).json({
         message: "Device ID and device name are required.",
+      });
+    }
+
+    const energyLimit = parseOptionalNumber(powerLimit);
+    const wattLimit = parseOptionalNumber(powerThresholdW);
+    const autoOff = parseOptionalNumber(autoOffMinutes, {
+      minimum: 1,
+      integer: true,
+    });
+    const smsPhone = normalizeAlertPhone(alertPhone);
+    const invalidWattLimit =
+      wattLimit.value !== undefined &&
+      wattLimit.value !== null &&
+      wattLimit.value <= 0;
+    if (
+      !energyLimit.valid ||
+      !wattLimit.valid ||
+      invalidWattLimit ||
+      !autoOff.valid ||
+      !smsPhone.valid
+    ) {
+      return res.status(400).json({
+        message:
+          "Daily energy threshold must be non-negative, watt threshold must be positive, auto-off minutes must be a positive whole number, and SMS numbers must be valid Indian mobiles.",
       });
     }
 
@@ -37,12 +100,15 @@ const createDevice = async (req, res) => {
       location: location?.trim() || "",
       owner: req.user.userId,
       status: "offline",
-      powerLimit: powerLimit !== undefined ? Number(powerLimit) : null,
+      powerLimit: energyLimit.value ?? null,
+      powerThresholdW: wattLimit.value ?? null,
+      autoOffMinutes: autoOff.value ?? null,
+      alertPhone: smsPhone.value,
     });
 
     return res.status(201).json({
       message: "Device created successfully.",
-      device,
+      device: serializeDevice(device),
     });
   } catch (error) {
     console.error("Create device error:", error);
@@ -124,6 +190,8 @@ const getDevices = async (req, res) => {
         const devObj = device.toObject ? device.toObject() : device;
         return {
           ...devObj,
+          wifiPassword: undefined,
+          ratePerKWh: getRatePerKWh(),
           isOnline,
           status: isOnline ? "online" : "offline",
           currentPowerW: latestReading && device.powerState === "ON" ? Number(latestReading.power) : 0,
@@ -208,6 +276,8 @@ const getDeviceById = async (req, res) => {
     const devObj = device.toObject ? device.toObject() : device;
     const enrichedDevice = {
       ...devObj,
+      wifiPassword: undefined,
+      ratePerKWh: getRatePerKWh(),
       isOnline,
       status: isOnline ? "online" : "offline",
       currentPowerW: latestReading && device.powerState === "ON" ? Number(latestReading.power) : 0,
@@ -236,7 +306,14 @@ const getDeviceById = async (req, res) => {
 const updateDevice = async (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { name, location, powerLimit } = req.body;
+    const {
+      name,
+      location,
+      powerLimit,
+      powerThresholdW,
+      autoOffMinutes,
+      alertPhone,
+    } = req.body;
 
     const device = await Device.findOne({
       deviceId,
@@ -249,6 +326,30 @@ const updateDevice = async (req, res) => {
       });
     }
 
+    const energyLimit = parseOptionalNumber(powerLimit);
+    const wattLimit = parseOptionalNumber(powerThresholdW);
+    const autoOff = parseOptionalNumber(autoOffMinutes, {
+      minimum: 1,
+      integer: true,
+    });
+    const smsPhone = normalizeAlertPhone(alertPhone);
+    const invalidWattLimit =
+      wattLimit.value !== undefined &&
+      wattLimit.value !== null &&
+      wattLimit.value <= 0;
+    if (
+      !energyLimit.valid ||
+      !wattLimit.valid ||
+      invalidWattLimit ||
+      !autoOff.valid ||
+      !smsPhone.valid
+    ) {
+      return res.status(400).json({
+        message:
+          "Daily energy threshold must be non-negative, watt threshold must be positive, auto-off minutes must be a positive whole number, and SMS numbers must be valid Indian mobiles.",
+      });
+    }
+
     if (name !== undefined) {
       device.name = name.trim();
     }
@@ -257,8 +358,8 @@ const updateDevice = async (req, res) => {
       device.location = location.trim();
     }
 
-    if (powerLimit !== undefined) {
-      device.powerLimit = powerLimit === null ? null : Number(powerLimit);
+    if (energyLimit.value !== undefined) {
+      device.powerLimit = energyLimit.value;
       clearAutoOffTimer(device._id);
       clearAutoOffTimer(device.deviceId);
       if (device.powerLimit && device.dailyEnergyKWh < device.powerLimit) {
@@ -266,17 +367,88 @@ const updateDevice = async (req, res) => {
       }
     }
 
+    if (wattLimit.value !== undefined) {
+      device.powerThresholdW = wattLimit.value;
+      device.powerAlertActive = false;
+      clearAutoOffTimer(device._id);
+      clearAutoOffTimer(device.deviceId);
+    }
+
+    if (autoOff.value !== undefined) {
+      device.autoOffMinutes = autoOff.value;
+      clearAutoOffTimer(device._id);
+      clearAutoOffTimer(device.deviceId);
+    }
+
+    if (smsPhone.value !== undefined) {
+      device.alertPhone = smsPhone.value;
+    }
+
     await device.save();
 
     return res.status(200).json({
       message: "Device updated successfully.",
-      device,
+      device: serializeDevice(device),
     });
   } catch (error) {
     console.error("Update device error:", error);
 
     return res.status(500).json({
       message: "Unable to update device.",
+    });
+  }
+};
+
+const updateDeviceWifi = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { wifiSSID, wifiPassword } = req.body;
+    if (wifiSSID === undefined && wifiPassword === undefined) {
+      return res.status(400).json({
+        message: "Provide a Wi-Fi network name or password to update.",
+      });
+    }
+    if (
+      wifiSSID !== undefined &&
+      (typeof wifiSSID !== "string" || !wifiSSID.trim())
+    ) {
+      return res.status(400).json({
+        message: "Wi-Fi network name cannot be empty.",
+      });
+    }
+    if (wifiPassword !== undefined && typeof wifiPassword !== "string") {
+      return res.status(400).json({
+        message: "Wi-Fi password must be a string.",
+      });
+    }
+
+    const device = await Device.findOne({
+      deviceId,
+      owner: req.user.userId,
+    }).select("+wifiPassword");
+
+    if (!device) {
+      return res.status(404).json({
+        message: "Device not found.",
+      });
+    }
+
+    if (wifiSSID !== undefined) device.wifiSSID = wifiSSID.trim();
+    if (wifiPassword !== undefined) device.wifiPassword = wifiPassword;
+    await device.save();
+
+    return res.status(200).json({
+      message: `Wi-Fi settings updated for "${device.name}". The device will sync them on its next check-in.`,
+      device: {
+        deviceId: device.deviceId,
+        wifiSSID: device.wifiSSID,
+        wifiConfigured: Boolean(device.wifiSSID),
+      },
+    });
+  } catch (error) {
+    console.error("Update device Wi-Fi error:", error);
+    return res.status(500).json({
+      message: "Unable to update device Wi-Fi settings.",
     });
   }
 };
@@ -331,6 +503,7 @@ const turnOffDevice = async (req, res) => {
     }
 
     device.powerState = "OFF";
+    device.powerAlertActive = false;
 
     await device.save();
 
@@ -367,6 +540,7 @@ const turnOnDevice = async (req, res) => {
 
     device.powerState = "ON";
     device.autoOffDueToLimit = false;
+    device.powerAlertActive = false;
     clearAutoOffTimer(device._id);
     clearAutoOffTimer(device.deviceId);
 
@@ -385,12 +559,9 @@ const turnOnDevice = async (req, res) => {
   }
 };
 
-// Regenerate a device's hardware API key (e.g. if it leaked). The old key
-// stops working immediately - update your ESP32/Arduino firmware after this.
-const regenerateApiKey = async (req, res) => {
+const testDeviceSms = async (req, res) => {
   try {
     const { deviceId } = req.params;
-
     const device = await Device.findOne({
       deviceId,
       owner: req.user.userId,
@@ -402,13 +573,59 @@ const regenerateApiKey = async (req, res) => {
       });
     }
 
-    device.apiKey = require("crypto").randomBytes(24).toString("hex");
+    const User = require("../models/User");
+    const user = await User.findById(req.user.userId);
+    const targetPhone =
+      device.alertPhone || (user ? user.mobile || user.mobileNumber : null);
+    if (!targetPhone) {
+      return res.status(400).json({
+        message:
+          "Add an alert number to this device or a mobile number to your profile first.",
+      });
+    }
 
-    await device.save();
+    const result = await sendSmsAlert(
+      targetPhone,
+      `WattWise test SMS for "${device.name}". Fast2SMS accepted test messages do not guarantee phone delivery.`
+    );
+    if (!result.sent) {
+      return res.status(502).json({
+        success: false,
+        message: result.reason,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Fast2SMS accepted a test SMS for ${targetPhone}. Provider acceptance does not guarantee phone delivery.`,
+      targetPhone,
+      status: result.status,
+    });
+  } catch (error) {
+    console.error("Test device SMS error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to send test SMS.",
+    });
+  }
+};
+
+// Regenerate a device's hardware API key (e.g. if it leaked). The old key
+// stops working immediately - update your ESP32/Arduino firmware after this.
+const regenerateApiKey = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    const apiKey = await regenerateDeviceApiKey(deviceId, req.user.userId);
+    if (!apiKey) {
+      return res.status(404).json({
+        message: "Device not found.",
+      });
+    }
 
     return res.status(200).json({
       message: "API key regenerated successfully.",
-      apiKey: device.apiKey,
+      apiKey,
     });
   } catch (error) {
     console.error("Regenerate API key error:", error);
@@ -429,4 +646,6 @@ module.exports = {
   turnOnDevice,
   turnOffDevice,
   regenerateApiKey,
+  testDeviceSms,
+  updateDeviceWifi,
 };
